@@ -3,133 +3,203 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoFilter-IoT Dashboard</title>
+    <title>EcoFilter - IoT Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary-color: #1b4332; /* Xanh lá đậm đúng gu của Vy */
-            --secondary-color: #2d6a4f;
-            --light-bg: #f4f9f4;
-            --accent-red: #d90429;
-            --text-dark: #212529;
+            --primary-neon: #00ffb7;
+            --accent-pink: #ff5e62;
+            --bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+            --card-glass: rgba(255, 255, 255, 0.05);
+            --border-glass: rgba(255, 255, 255, 0.1);
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
+            background: var(--bg-gradient);
+            color: #f8f9fa;
             margin: 0;
             padding: 20px;
-            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        header {
+        .header {
             text-align: center;
-            padding: 20px 0;
-            background-color: var(--primary-color);
-            color: white;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
         }
 
-        h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
-        p.subtitle { margin: 5px 0 0 0; opacity: 0.8; font-size: 14px; }
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            letter-spacing: 1.5px;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
 
+        .subtitle {
+            margin: 5px 0 0 0;
+            opacity: 0.7;
+            font-size: 14px;
+            color: #a0aec0;
+        }
+
+        /* Đèn trạng thái IoT */
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 18px;
+            border-radius: 30px;
+            border: 1px solid var(--border-glass);
+            margin: 15px 0 25px 0;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #00bfff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00bfff;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
+            50% { opacity: 1; box-shadow: 0 0 12px #00bfff; }
+            100% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
+        }
+
+        /* Lưới hiển thị các ô dữ liệu số */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-bottom: 25px;
+            width: 100%;
+            max-width: 1000px;
         }
 
+        /* Hiệu ứng kính mờ Glassmorphism cho các Card */
         .card {
-            background: white;
+            background: var(--card-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
             padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             text-align: center;
-            border-top: 5px solid var(--secondary-color);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
         }
 
-        .card.alert {
-            border-top: 5px solid var(--accent-red);
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.15);
+            border: 1px solid rgba(0, 255, 183, 0.3);
         }
 
+        .card h3 {
+            margin: 0;
+            font-size: 15px;
+            color: #a0aec0;
+            letter-spacing: 0.5px;
+        }
+
+        /* Số to phát sáng Neon */
         .value {
-            font-size: 36px;
-            font-weight: bold;
-            color: var(--primary-color);
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--primary-neon);
+            text-shadow: 0 0 10px rgba(0, 255, 183, 0.3), 0 0 20px rgba(0, 255, 183, 0.1);
             margin: 15px 0;
         }
 
-        .progress-bar-container {
-            background-color: #e9ecef;
-            border-radius: 10px;
-            height: 25px;
-            width: 100%;
-            overflow: hidden;
-            margin-top: 15px;
+        .card-pink .value {
+            color: var(--accent-pink);
+            text-shadow: 0 0 10px rgba(255, 94, 98, 0.3), 0 0 20px rgba(255, 94, 98, 0.1);
         }
 
-        .progress-bar {
-            background-color: var(--secondary-color);
+        #status-message {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        /* Thanh tiến trình độ bão hòa nâng cấp */
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            height: 24px;
+            width: 100%;
+            margin-top: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .progress-bar-fill {
+            background-color: #2d6a4f;
             height: 100%;
-            width: 0%; 
-            transition: width 0.5s ease-in-out, background-color 0.5s;
-            color: white;
+            width: 0%;
+            transition: width 0.5s ease, background-color 0.5s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 12px;
             font-weight: bold;
+            color: white;
         }
 
-        .blink {
-            animation: blinker 1.5s linear infinite;
-            color: var(--accent-red);
-            font-weight: bold;
-        }
-
-        @keyframes blinker {
-            50% { opacity: 0; }
+        /* Vùng chứa biểu đồ rộng 100% */
+        .chart-container {
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 20px;
+            box-sizing: border-box;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <h1>ECOFILTER - IoT DASHBOARD</h1>
-        <p class="subtitle">Hệ thống giám sát bẫy vi nhựa thời gian thực | Dự án KHKT 2026</p>
-    </header>
+    <div class="header">
+        <h1>🌊 EcoFilter Dashboard</h1>
+        <p class="subtitle">Hệ thống giám sát bẫy vi nhựa thời gian thực - Màng sinh học Keratin</p>
+    </div>
+
+    <div class="status-container">
+        <div class="status-dot"></div>
+        <span style="font-size: 13px; color: #cbd5e0;">Hệ thống: Đang mô phỏng dữ liệu IoT</span>
+    </div>
 
     <div class="dashboard-grid">
         <div class="card">
-            <h3>💧 Lưu Lượng Nước Tích Lũy</h3>
+            <h3>💧 TỔNG LƯU LƯỢNG NƯỚC</h3>
             <div class="value" id="water-volume">0.0 Lít</div>
-            <p>Dữ liệu cập nhật từ cảm biến ESP32</p>
+        </div>
+
+        <div class="card card-pink">
+            <h3>🧫 VI NHỰA GIỮ LẠI</h3>
+            <div class="value" id="microplastic-mass">0.00 mg</div>
         </div>
 
         <div class="card">
-            <h3>🔬 Vi Nhựa Đã Giữ Lại (Ước tính)</h3>
-            <div class="value" id="microplastic-mass" style="color: #b7094c;">0.00 mg</div>
-            <p>Dựa trên thuật toán hiệu suất màng Keratin</p>
+            <h3>⚠️ MỨC ĐỘ BÃO HÒA MÀNG</h3>
+            <div id="status-message" style="margin-top: 10px;">Đang kiểm tra...</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="filter-progress">0%</div>
+            </div>
         </div>
     </div>
 
-    <div class="card alert">
-        <h3>⚠️ Tình Trạng Độ Bão Hòa Màng Lọc Keratin</h3>
-        <div class="progress-bar-container">
-            <div class="progress-bar" id="filter-progress">0%</div>
+    <div class="chart-container card">
+        <h3 style="text-align: left; margin-bottom: 15px;">📈 ĐỒ THỊ THEO DÕI THỜI GIAN THỰC</h3>
+        <div style="position: relative; height: 320px; width: 100%;">
+            <canvas id="realtimeChart"></canvas>
         </div>
-        <p id="status-message" style="margin-top: 15px;">Hệ thống đang khởi động...</p>
     </div>
-</div>
 
-<script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
