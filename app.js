@@ -98,7 +98,7 @@ setInterval(() => {
     }
 
     // f. CẬP NHẬT BIỂU ĐỒ THEO THỜI GIAN THỰC
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     
     realtimeChart.data.labels.push(currentTime);
     realtimeChart.data.datasets[0].data.push(waterVolume);
