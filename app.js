@@ -86,31 +86,35 @@ const ctx = document.getElementById('realtimeChart').getContext('2d');
 });
 
 // --- 2. HÀM CHẠY ĐỒNG BỘ MỖI 1 GIÂY ---
-setInterval(() => {
-    // a. Giả lập nước chảy: Mỗi giây tăng 0.2 Lít
-    waterVolume += 0.2;
+// // --- 2. HÀM LẮNG NGHE DỮ LIỆU THỜI GIAN THỰC TỪ FIREBASE ---
+database.ref().on('value', (snapshot) => {
+    const data = snapshot.val();
     
-    // b. Giả lập hiệu suất bẫy: Cứ 1 Lít nước thu được 0.5mg vi nhựa
-    microplasticMass = waterVolume * 0.5;
+    // Nếu Firebase chưa có dữ liệu hoặc trống, bỏ qua không chạy tiếp
+    if (!data) return;
 
-    // c. Tính toán phần trăm độ bão hòa của màng
+    // Lấy dữ liệu thật từ Firebase đổ về (Mạch ESP32 sẽ đẩy lên theo đúng các tên biến này)
+    waterVolume = data.waterVolume || 0;
+    microplasticMass = data.microplasticMass || 0;
+
+    // Cập nhật số liệu hiển thị lên các ô thẻ HTML trên màn hình
+    document.getElementById('water-volume').innerText = waterVolume.toFixed(1);
+    document.getElementById('microplastic-mass').innerText = microplasticMass.toFixed(1);
+
+    // Tính toán tỷ lệ phần trăm bão hòa của màng lọc
     let saturationPercentage = (microplasticMass / maxCapacity) * 100;
     if (saturationPercentage > 100) saturationPercentage = 100;
-
-    // d. Cập nhật các con số lên giao diện Kính Mờ
-    document.getElementById('water-volume').innerText = waterVolume.toFixed(1) + " Lít";
-    document.getElementById('microplastic-mass').innerText = microplasticMass.toFixed(2) + " mg";
 
     // e. Xử lý thanh tiến trình tiến độ bão hòa và đổi màu cảnh báo
     const progressBar = document.getElementById('filter-progress');
     const statusMessage = document.getElementById('status-message');
-    
+
     progressBar.style.width = saturationPercentage.toFixed(0) + "%";
     progressBar.innerText = saturationPercentage.toFixed(0) + "%";
 
     if (saturationPercentage >= 80) {
         progressBar.style.backgroundColor = "#ff5e62"; // Đỏ nguy hiểm
-        statusMessage.innerHTML = `<span style="color: #ff5e62; font-weight: bold;">⚠️ NGUY HIỂM: Màng bão hòa! Hãy thay thế!</span>`;
+        statusMessage.innerHTML = `<span style="color: #ff5e62; font-weight: bold;">🚨 Cảnh báo: Màng lọc quá tải!</span>`;
     } else if (saturationPercentage >= 50) {
         progressBar.style.backgroundColor = "#ffb703"; // Vàng cảnh báo sắp đầy
         statusMessage.innerHTML = `<span style="color: #ffb703;">⚠️ Cảnh báo: Màng lọc sắp đầy</span>`;
@@ -120,8 +124,8 @@ setInterval(() => {
     }
 
     // f. CẬP NHẬT BIỂU ĐỒ THEO THỜI GIAN THỰC
-     const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
     realtimeChart.data.labels.push(currentTime);
     realtimeChart.data.datasets[0].data.push(waterVolume);
     realtimeChart.data.datasets[1].data.push(microplasticMass);
@@ -133,7 +137,6 @@ setInterval(() => {
         realtimeChart.data.datasets[1].data.shift();
     }
 
-    // Lệnh kích hoạt biểu đồ vẽ lại đường mới
-    realtimeChart.update('none'); // Thêm tham số 'none' để biểu đồ mượt, không bị khựng giật
-
-}, 1000); // 1000ms = 1 giây chạy một lần
+    // Lệnh kích hoạt biểu đồ vẽ lại đường mới mượt mà
+    realtimeChart.update('none');
+});
