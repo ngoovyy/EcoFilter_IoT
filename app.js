@@ -1,11 +1,33 @@
-// --- KHỞI TẠO BIẾN GIẢ LẬP BAN ĐẦU ---
-let waterVolume = 0;          // Bắt đầu từ 0 Lít nước
-let microplasticMass = 0;     // Bắt đầu từ 0 mg vi nhựa
-const maxCapacity = 100;      // Hạn mức tối đa màng lọc chịu được (100mg)
+// ==========================================
+// 🔴 PHẦN DÁN MỚI: CẤU HÌNH FIREBASE KẾT NỐI
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCTL732xXKFUOtZnueYzoBtz_dyhOS1p_8",
+  authDomain: "ecofilter-iot.firebaseapp.com",
+  databaseURL: "https://ecofilter-iot-default-rtdb.firebaseio.com",
+  projectId: "ecofilter-iot",
+  storageBucket: "ecofilter-iot.firebasestorage.app",
+  messagingSenderId: "611838926722",
+  appId: "1:611838926722:web:00cfe4ee3ba927c1d7799b",
+  measurementId: "G-M0Z7Q3L90K"
+};
+
+// Khởi tạo Firebase
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// ==========================================
+// 🟢 PHẦN CODE CŨ CỦA VY (Bị đẩy xuống dưới)
+// ==========================================
+// --- 1. KHỞI TẠO BIẾN GIẢ LẬP BAN ĐẦU ---
+let waterVolume = 0;             // Bắt đầu từ 0 Lít nước
+let microplasticMass = 0;        // Bắt đầu từ 0 mg vi nhựa
+const maxCapacity = 100;         // Hạn mức tối đa màng lọc chịu được (100mg)
 
 // --- 1. CẤU HÌNH BIỂU ĐỒ CHART.JS ---
 const ctx = document.getElementById('realtimeChart').getContext('2d');
-const realtimeChart = new Chart(ctx, {
+// ... (Các dòng code bên dưới giữ nguyên)
+
     type: 'line',
     data: {
         labels: [], // Trục X: Chứa mốc thời gian nhảy số (Giây)
