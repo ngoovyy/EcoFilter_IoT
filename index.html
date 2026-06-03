@@ -13,7 +13,6 @@
             --card-glass: rgba(255, 255, 255, 0.05);
             --border-glass: rgba(255, 255, 255, 0.1);
         }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: var(--bg-gradient);
@@ -25,12 +24,10 @@
             flex-direction: column;
             align-items: center;
         }
-
         .header {
             text-align: center;
             margin-bottom: 10px;
         }
-
         .header h1 {
             margin: 0;
             font-size: 32px;
@@ -38,14 +35,12 @@
             color: #ffffff;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
         }
-
         .subtitle {
             margin: 5px 0 0 0;
             opacity: 0.7;
             font-size: 14px;
             color: #a0aec0;
         }
-
         /* Đèn trạng thái IoT */
         .status-container {
             display: flex;
@@ -57,7 +52,6 @@
             border: 1px solid var(--border-glass);
             margin: 15px 0 25px 0;
         }
-
         .status-dot {
             width: 10px;
             height: 10px;
@@ -66,13 +60,11 @@
             box-shadow: 0 0 8px #00bfff;
             animation: blink 1.5s infinite;
         }
-
         @keyframes blink {
             0% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
             50% { opacity: 1; box-shadow: 0 0 12px #00bfff; }
             100% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
         }
-
         /* Lưới hiển thị các ô dữ liệu số */
         .dashboard-grid {
             display: grid;
@@ -81,7 +73,6 @@
             width: 100%;
             max-width: 1000px;
         }
-
         /* Hiệu ứng kính mờ Glassmorphism cho các Card */
         .card {
             background: var(--card-glass);
@@ -94,20 +85,17 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
         }
-
         .card:hover {
             transform: translateY(-5px);
             box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.15);
             border: 1px solid rgba(0, 255, 183, 0.3);
         }
-
         .card h3 {
             margin: 0;
             font-size: 15px;
             color: #a0aec0;
             letter-spacing: 0.5px;
         }
-
         /* Số to phát sáng Neon */
         .value {
             font-size: 42px;
@@ -116,18 +104,15 @@
             text-shadow: 0 0 10px rgba(0, 255, 183, 0.3), 0 0 20px rgba(0, 255, 183, 0.1);
             margin: 15px 0;
         }
-
         .card-pink .value {
             color: var(--accent-pink);
             text-shadow: 0 0 10px rgba(255, 94, 98, 0.3), 0 0 20px rgba(255, 94, 98, 0.1);
         }
-
         #status-message {
             font-size: 14px;
             font-weight: 500;
             color: #e2e8f0;
         }
-
         /* Thanh tiến trình độ bão hòa nâng cấp */
         .progress-bar-container {
             background: rgba(255, 255, 255, 0.1);
@@ -138,7 +123,6 @@
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
-
         .progress-bar-fill {
             background-color: #2d6a4f;
             height: 100%;
@@ -151,7 +135,6 @@
             font-weight: bold;
             color: white;
         }
-
         /* Vùng chứa biểu đồ rộng 100% */
         .chart-container {
             width: 100%;
@@ -160,8 +143,8 @@
             box-sizing: border-box;
         }
     </style>
-    
-   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
@@ -201,6 +184,24 @@
         <div style="position: relative; height: 320px; width: 100%;">
             <canvas id="realtimeChart"></canvas>
         </div>
+    </div>
+
+    <div class="history-container" style="margin-top: 25px; padding: 20px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid var(--border-glass); width: 100%; max-width: 1000px; box-sizing: border-box; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);">
+        <h3 style="color: #fff; margin-bottom: 15px; font-family: sans-serif; display: flex; align-items: center; gap: 8px; margin-top: 0; text-align: left;">
+            📋 Nhật Ký Giám Sát Hệ Thống (Realtime Logs)
+        </h3>
+        <table id="history-table" style="width: 100%; color: #fff; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #34495e; text-align: left; color: #8899a6;">
+                    <th style="padding: 10px;">Thời Gian Đọc</th>
+                    <th style="padding: 10px;">Tổng Lưu Lượng (Lít)</th>
+                    <th style="padding: 10px;">Vi Nhựa Giữ Lại (mg)</th>
+                    <th style="padding: 10px;">Trạng Thái Hệ Thống</th>
+                </tr>
+            </thead>
+            <tbody id="history-log-body">
+                </tbody>
+        </table>
     </div>
 
     <script src="app.js"></script>
