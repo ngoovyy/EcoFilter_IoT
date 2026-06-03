@@ -24,12 +24,11 @@ let waterVolume = 0;             // Bắt đầu từ 0 Lít nước
 let microplasticMass = 0;        // Bắt đầu từ 0 mg vi nhựa
 const maxCapacity = 100;         // Hạn mức tối đa màng lọc chịu được (100mg)
 
-// --- 1. CẤU HÌNH BIỂU ĐỒ CHART.JS ---
-const ctx = document.getElementById('realtimeChart').getContext('2d');
-// ... (Các dòng code bên dưới giữ nguyên)
 
-    type: 'line',
-    data: {
+    const ctx = document.getElementById('realtimeChart').getContext('2d');
+    const realtimeChart = new Chart(ctx, {
+        type: 'line',
+        data: {
         labels: [], // Trục X: Chứa mốc thời gian nhảy số (Giây)
         datasets: [
             {
