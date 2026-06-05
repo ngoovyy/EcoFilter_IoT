@@ -11,188 +11,188 @@ const firebaseConfig = {
   appId: "1:611838926722:web:00cfe4ee3ba927c1d7799b",
   measurementId: "G-M0Z7Q3L90K"
 };
-
+ 
 // Khởi tạo Firebase
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
-
+ 
 // ==========================================
-// 🟢 PHẦN CODE CŨ CỦA VY (Bị đẩy xuống dưới)
+// 🟢 PHẦN CODE XỬ LÝ ĐỒ THỊ VÀ LOGIC
 // ==========================================
-// --- 1. KHỞI TẠO BIẾN GIẢ LẬP BAN ĐẦU ---
-let waterVolume = 0;             // Bắt đầu từ 0 Lít nước
-let microplasticMass = 0;        // Bắt đầu từ 0 mg vi nhựa
-const maxCapacity = 100;         // Hạn mức tối đa màng lọc chịu được (100mg)
+const maxCapacity = 100; // Hạn mức tối đa màng lọc chịu được (100mg)
+let realtimeChart;
 
-
-    const ctx = document.getElementById('realtimeChart').getContext('2d');
-    const realtimeChart = new Chart(ctx, {
+// Đảm bảo giao diện tải xong mới chạy Chart
+document.addEventListener("DOMContentLoaded", () => {
+    const canvasElement = document.getElementById('realtimeChart');
+    if (!canvasElement) return;
+    
+    const ctx = canvasElement.getContext('2d');
+    realtimeChart = new Chart(ctx, {
         type: 'line',
         data: {
-        labels: [], // Trục X: Chứa mốc thời gian nhảy số (Giây)
-        datasets: [
-            {
-                label: 'Lưu lượng nước (Lít)',
-                data: [],
-                borderColor: '#00ffb7', // Xanh Neon
-                backgroundColor: 'rgba(0, 255, 183, 0.05)',
-                borderWidth: 3,
-                pointRadius: 2,
-                tension: 0.3, // Làm mượt đường cong đồ thị
-                yAxisID: 'yWater'
-            },
-            {
-                label: 'Vi nhựa giữ lại (mg)',
-                data: [],
-                borderColor: '#ff5e62', // Hồng Đỏ
-                backgroundColor: 'rgba(255, 94, 98, 0.05)',
-                borderWidth: 3,
-                pointRadius: 2,
-                tension: 0.3,
-                yAxisID: 'yPlastic'
-            }
-        ]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            x: {
-                grid: { color: 'rgba(255, 255, 255, 0.03)' },
-                ticks: { color: '#a0aec0' }
-            },
-            yWater: {
-                type: 'linear',
-                position: 'left',
-                title: { display: true, text: 'Lít', color: '#00ffb7', font: { weight: 'bold' } },
-                grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                ticks: { color: '#a0aec0' }
-            },
-            yPlastic: {
-                type: 'linear',
-                position: 'right',
-                title: { display: true, text: 'mg', color: '#ff5e62', font: { weight: 'bold' } },
-                grid: { display: false }, // Tắt lưới bên phải để tránh rối mắt
-                ticks: { color: '#a0aec0' }
-            }
+            labels: [], 
+            datasets: [
+                {
+                    label: 'Lưu lượng nước (Lít)',
+                    data: [],
+                    borderColor: '#00ffb7', 
+                    backgroundColor: 'rgba(0, 255, 183, 0.05)',
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    tension: 0.3, 
+                    yAxisID: 'yWater'
+                },
+                {
+                    label: 'Vi nhựa giữ lại (mg)',
+                    data: [],
+                    borderColor: '#ff5e62', 
+                    backgroundColor: 'rgba(255, 94, 98, 0.05)',
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    tension: 0.3,
+                    yAxisID: 'yPlastic'
+                }
+            ]
         },
-        plugins: {
-            legend: {
-                labels: { color: '#e2e8f0', font: { size: 12 } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.03)' },
+                    ticks: { color: '#a0aec0' }
+                },
+                yWater: {
+                    type: 'linear',
+                    position: 'left',
+                    title: { display: true, text: 'Lít', color: '#00ffb7', font: { weight: 'bold' } },
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#a0aec0' }
+                },
+                yPlastic: {
+                    type: 'linear',
+                    position: 'right',
+                    title: { display: true, text: 'mg', color: '#ff5e62', font: { weight: 'bold' } },
+                    grid: { display: false }, 
+                    ticks: { color: '#a0aec0' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#e2e8f0', font: { size: 12 } }
+                }
             }
         }
-    }
+    });
+
+    // Kích hoạt lắng nghe Firebase sau khi đồ thị đã khởi tạo thành công
+    initFirebaseListener();
 });
-
-// --- 2. HÀM CHẠY ĐỒNG BỘ MỖI 1 GIÂY ---
-// // --- 2. HÀM LẮNG NGHE DỮ LIỆU THỜI GIAN THỰC TỪ FIREBASE ---
-// =========================================================================
-// 🔄 2. HÀM LẮNG NGHE DỮ LIỆU THỜI GIAN THỰC TỪ FIREBASE & XỬ LÝ NÂNG CAO
-// =========================================================================
-database.ref().on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    // Lấy dữ liệu từ Firebase đổ về (Cấu hình theo biến của mạch ESP32)
-    let waterVolume = data.waterVolume || 0;
-    let microplasticMass = data.microplasticMass || 0;
-
-    // Tính toán tỷ lệ phần trăm bão hòa của màng lọc
-    let saturationPercentage = (microplasticMass / maxCapacity) * 100;
-    if (saturationPercentage > 100) saturationPercentage = 100;
-
-    // Cập nhật số liệu hiển thị lên các ô thẻ HTML trên màn hình
-    document.getElementById('water-volume').innerText = waterVolume.toFixed(1);
-    document.getElementById('microplastic-mass').innerText = microplasticMass.toFixed(1);
-
-    // Xử lý thanh tiến trình tiến độ bão hòa và đổi màu cảnh báo thông minh
-    const progressBar = document.getElementById('filter-progress');
-    const statusMessage = document.getElementById('status-message');
-
-    if (progressBar && statusMessage) {
-        progressBar.style.width = saturationPercentage.toFixed(0) + "%";
-        progressBar.innerText = saturationPercentage.toFixed(0) + "%";
-
-        if (saturationPercentage >= 80) {
-            progressBar.style.backgroundColor = "#ff5e62"; // Đỏ nguy hiểm
-            statusMessage.innerHTML = `<span style="color: #ff5e62; font-weight: bold;">🚨 Cảnh báo: Màng lọc quá tải!</span>`;
-        } else if (saturationPercentage >= 50) {
-            progressBar.style.backgroundColor = "#ffb703"; // Vàng cảnh báo sắp đầy
-            statusMessage.innerHTML = `<span style="color: #ffb703;">⚠️ Cảnh báo: Màng lọc sắp đầy</span>`;
-        } else {
-            progressBar.style.backgroundColor = "#2d6a4f"; // Xanh lục hoạt động tốt
-            statusMessage.innerHTML = `<span style="color: #52b788;">Màng lọc hoạt động ổn định</span>`;
+ 
+// 🔄 2. HÀM LẮNG NGHE DỮ LIỆU THỜI GIAN THỰC TỪ FIREBASE
+function initFirebaseListener() {
+    database.ref().on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+     
+        let waterVolume = data.waterVolume || 0;
+        let microplasticMass = data.microplasticMass || 0;
+     
+        // Tính toán tỷ lệ phần trăm bão hòa
+        let saturationPercentage = (microplasticMass / maxCapacity) * 100;
+        if (saturationPercentage > 100) saturationPercentage = 100;
+     
+        // Cập nhật số liệu hiển thị (Đã sửa ID chuẩn theo index.html)
+        if(document.getElementById('water-flow')) {
+            document.getElementById('water-flow').innerHTML = `${waterVolume.toFixed(1)} <span class="unit">Lít</span>`;
         }
-    }
-
-    // CẬP NHẬT BIỂU ĐỒ THEO THỜI GIAN THỰC
-    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-    realtimeChart.data.labels.push(currentTime);
-    realtimeChart.data.datasets[0].data.push(waterVolume);
-    realtimeChart.data.datasets[1].data.push(microplasticMass);
-
-    // Giữ biểu đồ luôn đẹp mắt: Nếu quá 12 điểm dữ liệu, tự dịch chuyển tịnh tiến sang phải
-    if (realtimeChart.data.labels.length > 12) {
-        realtimeChart.data.labels.shift();
-        realtimeChart.data.datasets[0].data.shift();
-        realtimeChart.data.datasets[1].data.shift();
-    }
-
-    // Lệnh kích hoạt biểu đồ vẽ lại đường mới mượt mà
-    realtimeChart.update('none');
-
-    // TỰ ĐỘNG THÊM DÒNG VÀO BẢNG NHẬT KÝ (REALTIME LOGS)
-    const tableBody = document.getElementById("history-log-body");
-    if (tableBody) {
-        const row = document.createElement("tr");
-        row.style.borderBottom = "1px solid #2c3e50";
-        
-        let statusHTML = `<span style="color: #52b788">Ổn định</span>`;
-        if (saturationPercentage >= 50 && saturationPercentage < 80) statusHTML = `<span style="color: #ffb703">Sắp đầy</span>`;
-        if (saturationPercentage >= 80) statusHTML = `<span style="color: #ff5e62; font-weight: bold;">Quá tải</span>`;
-
-        row.innerHTML = `
-            <td style="padding: 10px;">${currentTime}</td>
-            <td style="padding: 10px;">${waterVolume.toFixed(1)}</td>
-            <td style="padding: 10px;">${microplasticMass.toFixed(1)}</td>
-            <td style="padding: 10px;">${statusHTML}</td>
-        `;
-
-        // Chèn dòng mới lên đầu bảng
-        tableBody.insertBefore(row, tableBody.firstChild);
-
-        // Giới hạn bảng chỉ giữ lại tối đa 8 dòng gần nhất để tránh lag giao diện
-        if (tableBody.children.length > 8) {
-            tableBody.removeChild(tableBody.lastChild);
+        if(document.getElementById('turbidity-status')) {
+            document.getElementById('turbidity-status').innerText = microplasticMass.toFixed(1) + " mg";
         }
-    }
-});
-
-// =========================================================================
-// 🚀 3. HÀM GIẢ LẬP CẢM BIẾN IOT CHẠY TỰ ĐỘNG (DÙNG KHI CHƯA CÓ PHẦN CỨNG)
-// =========================================================================
+     
+        // Xử lý thanh tiến trình thông minh (Nếu có trên HTML)
+        const progressBar = document.getElementById('filter-progress');
+        const statusMessage = document.getElementById('status-message');
+     
+        if (progressBar && statusMessage) {
+            progressBar.style.width = saturationPercentage.toFixed(0) + "%";
+            progressBar.innerText = saturationPercentage.toFixed(0) + "%";
+     
+            if (saturationPercentage >= 80) {
+                progressBar.style.backgroundColor = "#ff5e62"; 
+                statusMessage.innerHTML = `<span style="color: #ff5e62; font-weight: bold;">🚨 Cảnh báo: Màng lọc quá tải!</span>`;
+            } else if (saturationPercentage >= 50) {
+                progressBar.style.backgroundColor = "#ffb703"; 
+                statusMessage.innerHTML = `<span style="color: #ffb703;">⚠️ Cảnh báo: Màng lọc sắp đầy</span>`;
+            } else {
+                progressBar.style.backgroundColor = "#2d6a4f"; 
+                statusMessage.innerHTML = `<span style="color: #52b788;">Màng lọc hoạt động ổn định</span>`;
+            }
+        }
+     
+        // CẬP NHẬT BIỂU ĐỒ THEO THỜI GIAN THỰC
+        if (realtimeChart) {
+            const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+         
+            realtimeChart.data.labels.push(currentTime);
+            realtimeChart.data.datasets[0].data.push(waterVolume);
+            realtimeChart.data.datasets[1].data.push(microplasticMass);
+         
+            if (realtimeChart.data.labels.length > 12) {
+                realtimeChart.data.labels.shift();
+                realtimeChart.data.datasets[0].data.shift();
+                realtimeChart.data.datasets[1].data.shift();
+            }
+            realtimeChart.update('none');
+        }
+     
+        // TỰ ĐỘNG THÊM DÒNG VÀO BẢNG NHẬT KÝ
+        const tableBody = document.getElementById("history-log-body");
+        if (tableBody) {
+            const row = document.createElement("tr");
+            row.style.borderBottom = "1px solid #2c3e50";
+            
+            let statusHTML = `<span style="color: #52b788">Ổn định</span>`;
+            if (saturationPercentage >= 50 && saturationPercentage < 80) statusHTML = `<span style="color: #ffb703">Sắp đầy</span>`;
+            if (saturationPercentage >= 80) statusHTML = `<span style="color: #ff5e62; font-weight: bold;">Quá tải</span>`;
+     
+            const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            row.innerHTML = `
+                <td style="padding: 10px;">${currentTime}</td>
+                <td style="padding: 10px;">${waterVolume.toFixed(1)} L</td>
+                <td style="padding: 10px;">${microplasticMass.toFixed(1)} mg</td>
+                <td style="padding: 10px;">${statusHTML}</td>
+            `;
+     
+            tableBody.insertBefore(row, tableBody.firstChild);
+            if (tableBody.children.length > 8) {
+                tableBody.removeChild(tableBody.lastChild);
+            }
+        }
+    });
+}
+ 
+// ==========================================
+// 🚀 3. HÀM GIẢ LẬP CẢM BIẾN IOT CHẠY TỰ ĐỘNG (BẬT KHI TEST WEB)
+// ==========================================
 function startSensorSimulation() {
     let currentWater = 15.5; 
     let currentPlastic = 42.8;
-
+ 
     setInterval(() => {
-        // Giả lập lượng nước tăng tiến thêm ngẫu nhiên từ 0.05 đến 0.15 lít
         let waterInflow = 0.05 + Math.random() * 0.1;
         currentWater += waterInflow;
-
-        // Giả lập lượng vi nhựa bẫy được tăng tỉ lệ thuận tương ứng
+ 
         let plasticDetected = waterInflow * (2.5 + Math.random() * 0.4);
         currentPlastic += plasticDetected;
-
-        // Tự động cập nhật đẩy dữ liệu mới lên Firebase sau mỗi 2 giây
+ 
         database.ref('/').update({
             waterVolume: parseFloat(currentWater.toFixed(1)),
             microplasticMass: parseFloat(currentPlastic.toFixed(1))
         });
-
     }, 2000);
 }
-
-// Kích hoạt giả lập chạy tự động
+ 
+// Kích hoạt giả lập chạy tự động để test giao diện
 startSensorSimulation();
