@@ -1,211 +1,250 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoFilter - IoT Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary-neon: #00ffb7;
-            --accent-pink: #ff5e62;
-            --bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
-            --card-glass: rgba(255, 255, 255, 0.05);
-            --border-glass: rgba(255, 255, 255, 0.1);
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg-gradient);
-            color: #f8f9fa;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 32px;
-            letter-spacing: 1.5px;
-            color: #ffffff;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-        }
-        .subtitle {
-            margin: 5px 0 0 0;
-            opacity: 0.7;
-            font-size: 14px;
-            color: #a0aec0;
-        }
-        /* Đèn trạng thái IoT */
-        .status-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px 18px;
-            border-radius: 30px;
-            border: 1px solid var(--border-glass);
-            margin: 15px 0 25px 0;
-        }
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            background-color: #00bfff;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #00bfff;
-            animation: blink 1.5s infinite;
-        }
-        @keyframes blink {
-            0% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
-            50% { opacity: 1; box-shadow: 0 0 12px #00bfff; }
-            100% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
-        }
-        /* Lưới hiển thị các ô dữ liệu số */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 1000px;
-        }
-        /* Hiệu ứng kính mờ Glassmorphism cho các Card */
-        .card {
-            background: var(--card-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.15);
-            border: 1px solid rgba(0, 255, 183, 0.3);
-        }
-        .card h3 {
-            margin: 0;
-            font-size: 15px;
-            color: #a0aec0;
-            letter-spacing: 0.5px;
-        }
-        /* Số to phát sáng Neon */
-        .value {
-            font-size: 42px;
-            font-weight: 800;
-            color: var(--primary-neon);
-            text-shadow: 0 0 10px rgba(0, 255, 183, 0.3), 0 0 20px rgba(0, 255, 183, 0.1);
-            margin: 15px 0;
-        }
-        .card-pink .value {
-            color: var(--accent-pink);
-            text-shadow: 0 0 10px rgba(255, 94, 98, 0.3), 0 0 20px rgba(255, 94, 98, 0.1);
-        }
-        #status-message {
-            font-size: 14px;
-            font-weight: 500;
-            color: #e2e8f0;
-        }
-        /* Thanh tiến trình độ bão hòa nâng cấp */
-        .progress-bar-container {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            height: 24px;
-            width: 100%;
-            margin-top: 15px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .progress-bar-fill {
-            background-color: #2d6a4f;
-            height: 100%;
-            width: 0%;
-            transition: width 0.5s ease, background-color 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-        }
-        /* Vùng chứa biểu đồ rộng 100% */
-        .chart-container {
-            width: 100%;
-            max-width: 1000px;
-            margin-top: 20px;
-            box-sizing: border-box;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EcoFilter - IoT Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+--primary-neon: #00ffb7;
+--accent-pink: #ff5e62;
+--ai-blue: #38bdf8; /* Màu riêng cho khối AI */
+--bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
+--card-glass: rgba(255, 255, 255, 0.05);
+--border-glass: rgba(255, 255, 255, 0.1);
+}
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: var(--bg-gradient);
+color: #f8f9fa;
+margin: 0;
+padding: 20px;
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+.header {
+text-align: center;
+margin-bottom: 10px;
+}
+.header h1 {
+margin: 0;
+font-size: 32px;
+letter-spacing: 1.5px;
+color: #ffffff;
+text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+.subtitle {
+margin: 5px 0 0 0;
+opacity: 0.7;
+font-size: 14px;
+color: #a0aec0;
+}
+/* Đèn trạng thái IoT */
+.status-container {
+display: flex;
+align-items: center;
+gap: 10px;
+background: rgba(0, 0, 0, 0.3);
+padding: 8px 18px;
+border-radius: 30px;
+border: 1px solid var(--border-glass);
+margin: 15px 0 25px 0;
+}
+.status-dot {
+width: 10px;
+height: 10px;
+background-color: #00bfff;
+border-radius: 50%;
+box-shadow: 0 0 8px #00bfff;
+animation: blink 1.5s infinite;
+}
+@keyframes blink {
+0% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
+50% { opacity: 1; box-shadow: 0 0 12px #00bfff; }
+100% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
+}
+/* Lưới hiển thị các ô dữ liệu số */
+.dashboard-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); /* Chỉnh lại một chút để vừa vặn 4 card */
+gap: 20px;
+width: 100%;
+max-width: 1000px;
+}
+/* Hiệu ứng kính mờ Glassmorphism cho các Card */
+.card {
+background: var(--card-glass);
+backdrop-filter: blur(12px);
+-webkit-backdrop-filter: blur(12px);
+border: 1px solid var(--border-glass);
+border-radius: 16px;
+padding: 25px;
+text-align: center;
+box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
+}
+.card:hover {
+transform: translateY(-5px);
+box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.15);
+border: 1px solid rgba(0, 255, 183, 0.3);
+}
+.card h3 {
+margin: 0;
+font-size: 15px;
+color: #a0aec0;
+letter-spacing: 0.5px;
+}
+/* Số to phát sáng Neon */
+.value {
+font-size: 42px;
+font-weight: 800;
+color: var(--primary-neon);
+text-shadow: 0 0 10px rgba(0, 255, 183, 0.3), 0 0 20px rgba(0, 255, 183, 0.1);
+margin: 15px 0;
+}
+.card-pink .value {
+color: var(--accent-pink);
+text-shadow: 0 0 10px rgba(255, 94, 98, 0.3), 0 0 20px rgba(255, 94, 98, 0.1);
+}
+#status-message {
+font-size: 14px;
+font-weight: 500;
+color: #e2e8f0;
+}
+/* Thanh tiến trình độ bão hòa nâng cấp */
+.progress-bar-container {
+background: rgba(255, 255, 255, 0.1);
+border-radius: 10px;
+height: 24px;
+width: 100%;
+margin-top: 15px;
+overflow: hidden;
+border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.progress-bar-fill {
+background-color: #2d6a4f;
+height: 100%;
+width: 0%;
+transition: width 0.5s ease, background-color 0.5s ease;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 12px;
+font-weight: bold;
+color: white;
+}
+/* Thẩm mỹ riêng cho Card AI để nổi bật tính "Predictive" */
+.card-ai {
+border: 1px solid rgba(56, 189, 248, 0.2);
+}
+.card-ai:hover {
+box-shadow: 0 12px 40px 0 rgba(56, 189, 248, 0.2);
+border: 1px solid var(--ai-blue);
+}
+.card-ai h3 {
+color: var(--ai-blue);
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+}
+.ai-value {
+font-size: 32px; /* Nhỏ lại chút để hiện vừa chuỗi "X Giờ Y Phút" */
+font-weight: 800;
+color: #f59e0b; /* Màu cam hổ phách huyền bí */
+text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+margin: 20px 0;
+}
+#filter-status {
+font-size: 13px;
+font-weight: bold;
+padding: 2px 8px;
+border-radius: 4px;
+}
+.status-good { color: #00ffb7; background: rgba(0, 255, 183, 0.1); }
+.status-warning { color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.status-danger { color: #ff5e62; background: rgba(255, 94, 98, 0.1); }
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-</head>
-<body>
-
-    <div class="header">
-        <h1>🌊 EcoFilter Dashboard</h1>
-        <p class="subtitle">Hệ thống giám sát bẫy vi nhựa thời gian thực - Màng sinh học Keratin</p>
-    </div>
-
-    <div class="status-container">
-        <div class="status-dot"></div>
-        <span style="font-size: 13px; color: #cbd5e0;">Hệ thống: Đang mô phỏng dữ liệu IoT</span>
-    </div>
-
-    <div class="dashboard-grid">
-        <div class="card">
-            <h3>💧 TỔNG LƯU LƯỢNG NƯỚC</h3>
-            <div class="value" id="water-volume">0.0 Lít</div>
-        </div>
-
-        <div class="card card-pink">
-            <h3>🧫 VI NHỰA GIỮ LẠI</h3>
-            <div class="value" id="microplastic-mass">0.00 mg</div>
-        </div>
-
-        <div class="card">
-            <h3>⚠️ MỨC ĐỘ BÃO HÒA MÀNG</h3>
-            <div id="status-message" style="margin-top: 10px;">Đang kiểm tra...</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" id="filter-progress">0%</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="chart-container card">
-        <h3 style="text-align: left; margin-bottom: 15px;">📈 ĐỒ THỊ THEO DÕI THỜI GIAN THỰC</h3>
-        <div style="position: relative; height: 320px; width: 100%;">
-            <canvas id="realtimeChart"></canvas>
-        </div>
-    </div>
-
-    <div class="history-container" style="margin-top: 25px; padding: 20px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid var(--border-glass); width: 100%; max-width: 1000px; box-sizing: border-box; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);">
-        <h3 style="color: #fff; margin-bottom: 15px; font-family: sans-serif; display: flex; align-items: center; gap: 8px; margin-top: 0; text-align: left;">
-            📋 Nhật Ký Giám Sát Hệ Thống (Realtime Logs)
-        </h3>
-        <table id="history-table" style="width: 100%; color: #fff; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
-            <thead>
-                <tr style="border-bottom: 2px solid #34495e; text-align: left; color: #8899a6;">
-                    <th style="padding: 10px;">Thời Gian Đọc</th>
-                    <th style="padding: 10px;">Tổng Lưu Lượng (Lít)</th>
-                    <th style="padding: 10px;">Vi Nhựa Giữ Lại (mg)</th>
-                    <th style="padding: 10px;">Trạng Thái Hệ Thống</th>
-                </tr>
-            </thead>
-            <tbody id="history-log-body">
-                </tbody>
-        </table>
-    </div>
-<script src="app.js"></script>
+/* Vùng chứa biểu đồ rộng 100% */
+.chart-container {
+width: 100%;
+max-width: 1000px;
+margin-top: 20px;
+box-sizing: border-box;
+}
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+<div class="header">
+<h1> 🌊  EcoFilter Dashboard</h1>
+<p class="subtitle">Hệ thống giám sát bẫy vi nhựa thời gian thực - Màng sinh học Keratin</p>
+</div>
+<div class="status-container">
+<div class="status-dot"></div>
+<span style="font-size: 13px; color: #cbd5e0;">Hệ thống: Đang mô phỏng dữ liệu IoT</span>
+</div>
+
+<div class="dashboard-grid">
+<div class="card">
+<h3> 💧  TỔNG LƯU LƯỢNG NƯỚC</h3>
+<div class="value" id="water-volume">0.0 Lít</div>
+</div>
+
+<div class="card card-pink">
+<h3> 🧫  VI NHỰA GIỮ LẠI</h3>
+<div class="value" id="microplastic-mass">0.00 mg</div>
+</div>
+
+<div class="card">
+<h3> ⚠️  MỨC ĐỘ BÃO HÒA MÀNG</h3>
+<div id="status-message" style="margin-top: 10px;">Đang kiểm tra...</div>
+<div class="progress-bar-container">
+<div class="progress-bar-fill" id="filter-progress">0%</div>
+</div>
+</div>
+
+<div class="card card-ai">
+<h3><i class="fas fa-brain"></i> DỰ ĐOÁN TUỔI THỌ AI</h3>
+<div style="font-size: 13px; color: #a0aec0; margin-top: 5px;">
+Trạng thái: <span id="filter-status" class="status-good">Đang phân tích...</span>
+</div>
+<div class="ai-value" id="ai-countdown">-- Giờ -- Phút</div>
+<div style="font-size: 12px; color: #a0aec0; margin-top: -5px;">Thời gian bảo trì dự kiến</div>
+</div>
+</div>
+
+<div class="chart-container card">
+<h3 style="text-align: left; margin-bottom: 15px;"> 📈  ĐỒ THỊ THEO DÕI THỜI GIAN THỰC</h3>
+<div style="position: relative; height: 320px; width: 100%;">
+<canvas id="realtimeChart"></canvas>
+</div>
+</div>
+
+<div class="history-container" style="margin-top: 25px; padding: 20px; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid var(--border-glass); width: 100%; max-width: 1000px; box-sizing: border-box; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);">
+<h3 style="color: #fff; margin-bottom: 15px; font-family: sans-serif; display: flex; align-items: center; gap: 8px; margin-top: 0; text-align: left;">
+📋  Nhật Ký Giám Sát Hệ Thống (Realtime Logs)
+</h3>
+<table id="history-table" style="width: 100%; color: #fff; border-collapse: collapse; font-family: sans-serif; font-size: 14px;">
+<thead>
+<tr style="border-bottom: 2px solid #34495e; text-align: left; color: #8899a6;">
+<th style="padding: 10px;">Thời Gian Đọc</th>
+<th style="padding: 10px;">Tổng Lưu Lượng (Lít)</th>
+<th style="padding: 10px;">Vi Nhựa Giữ Lại (mg)</th>
+<th style="padding: 10px;">Trạng Thái Hệ Thống</th>
+</tr>
+</thead>
+<tbody id="history-log-body">
+</tbody>
+</table>
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
