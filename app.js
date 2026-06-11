@@ -1,5 +1,5 @@
 // ==========================================
-//     🔴     PHẦN CẤU HÌNH FIREBASE KẾT NỐI
+//      🔴      PHẦN CẤU HÌNH FIREBASE KẾT NỐI
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyCTL732xXKFUOtZnueYzoBtz_dyhOS1p_8",
@@ -12,43 +12,47 @@ const firebaseConfig = {
     measurementId: "G-M0Z7Q3L90K"
 };
 
-// Khởi tạo Firebase
+// Khởi tạo Firebase an toàn
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const database = firebase.database();
 
 // ==========================================
-//     🟢     BIẾN TOÀN CỤC, AI & ĐỒ THỊ
+//      🟢      BIẾN TOÀN CỤC, AI & ĐỒ THỊ
 // ==========================================
 const maxCapacity = 100; // Ngưỡng khối lượng vi nhựa bão hòa tối đa (mg)
 let realtimeChart = null;
-let simulationInterval = null;
+let ai_coefficient_a = 0.20; // Hệ số hồi quy mặc định
 
-// Biến điều khiển thuật toán hồi quy toán học y = ax
-let ai_coefficient_a = 0.20; // Mặc định ban đầu (Ví dụ nước máy: 0.20)
-
-// Biến lưu trữ lịch sử để tính toán tốc độ tích tụ vi nhựa theo thời gian thực
 let lastPlasticMass = 45.6;
 let lastTimestamp = Date.now();
 let estimatedMinutesLeft = 345;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Khởi tạo giao diện nền ban đầu cho khớp dữ liệu Firebase của Vy
+    // Khởi tạo giao diện nền ban đầu tránh bị trống màn hình
     updateUserInterface(16.5, 45.6, 345);
-    initChart();
     
-    // Kích hoạt lắng nghe dữ liệu trực tuyến từ Firebase và GPS
+    // Khởi tạo đồ thị an toàn
+    initChart();
+
+    // Kích hoạt lắng nghe dữ liệu trực tuyến từ Firebase và các tính năng mở rộng
     activateRealtimeDatabase();
     setupGPSFeature();
     setupManualMenu();
 });
 
 // ==========================================
-//     📈     KHỞI TẠO ĐỒ THỊ CHART.JS
+//      📈      KHỞI TẠO ĐỒ THỊ CHART.JS
 // ==========================================
 function initChart() {
-    const ctx = document.getElementById('realtimeChart').getContext('2d');
+    const chartCanvas = document.getElementById('realtimeChart');
+    if (!chartCanvas) {
+        console.warn("[CẢNH BÁO] Không tìm thấy thẻ canvas 'realtimeChart' trong HTML.");
+        return;
+    }
+    
+    const ctx = chartCanvas.getContext('2d');
     realtimeChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -107,28 +111,38 @@ function initChart() {
 }
 
 // ==========================================
-//     🌐     ĐỒNG BỘ REALTIME DATABASE (CHẾ ĐỘ ONLINE)
+//      🌐      ĐỒNG BỘ REALTIME DATABASE (ĐÃ ĐỒNG BỘ ĐƯỜNG DẪN MẠCH SENSOR)
 // ==========================================
 function activateRealtimeDatabase() {
     console.log("[HỆ THỐNG] Đang kết nối cổng dữ liệu trục đám mây...");
-    
+
     database.ref().on('value', (snapshot) => {
         const data = snapshot.val();
         
-        // Mở khóa đóng băng: Nếu Firebase chưa có xung thực tế, tự nạp số nền của Vy để chạy đồ thị uốn lượn
-        let waterVolume = (data && data.waterVolume !== undefined) ? data.waterVolume : 16.5;
-        let microplasticMass = (data && data.microplasticMass !== undefined) ? data.microplasticMass : 45.6;
-        
+        // MẶC ĐỊNH SỐ NỀN
+        let waterVolume = 16.5;
+        let microplasticMass = 45.6;
+
+        // ĐỒNG BỘ ĐÚNG ĐƯỜNG DẪN MẠCH ESP32 GỬI LÊN (/Sensor/WaterVolume và /Sensor/PlasticMass)
+        if (data && data.Sensor) {
+            if (data.Sensor.WaterVolume !== undefined) waterVolume = data.Sensor.WaterVolume;
+            if (data.Sensor.PlasticMass !== undefined) microplasticMass = data.Sensor.PlasticMass;
+        } else {
+            // Nếu dữ liệu thô nằm ở thư mục gốc (Dự phòng trường hợp Vy sửa code mạch)
+            if (data && data.waterVolume !== undefined) waterVolume = data.waterVolume;
+            if (data && data.microplasticMass !== undefined) microplasticMass = data.microplasticMass;
+        }
+
         let now = Date.now();
         let timePassedMinutes = (now - lastTimestamp) / 60000;
 
-        // Nếu chạy tĩnh mô phỏng tại phòng thi khi chưa cắm mạch thật, tạo độ nhấp nhô động cho đồ thị sinh động
-        if (data === null) {
+        // Cơ chế mô phỏng tự uốn lượn tại phòng thi nếu chưa cắm điện mạch thật
+        if (!data || (!data.Sensor && data.waterVolume === undefined)) {
             waterVolume = 16.5 + (Math.sin(now / 4000) * 0.12);
             microplasticMass = 45.6 + (Math.sin(now / 4000) * 0.28);
             estimatedMinutesLeft = 345;
         } else if (timePassedMinutes > 0 && microplasticMass > lastPlasticMass && lastPlasticMass > 0) {
-            // Thuật toán tiên tri đếm lùi thời gian dựa trên Tốc độ tích tụ vi nhựa thực tế
+            // Thuật toán tiên tri đếm lùi thời gian dựa trên tốc độ thực tế
             let accumulationRate = (microplasticMass - lastPlasticMass) / timePassedMinutes;
             let plasticRemaining = maxCapacity - microplasticMass;
             if (plasticRemaining < 0) plasticRemaining = 0;
@@ -137,45 +151,41 @@ function activateRealtimeDatabase() {
 
         lastPlasticMass = microplasticMass;
         lastTimestamp = now;
-
+        
+        // Đẩy số liệu ra giao diện màn hình
         updateUserInterface(waterVolume, microplasticMass, estimatedMinutesLeft);
     });
 }
 
 // ==========================================
-//     🎯     XỬ LÝ ĐỊNH VỊ VỆ TINH CLOUD GPS THẬT
+//      🎯      XỬ LÝ ĐỊNH VỊ VỆ TINH CLOUD GPS THẬT
 // ==========================================
 function setupGPSFeature() {
     const gpsButton = document.querySelector(".card-ai button");
     if (!gpsButton) return;
-
+    
     gpsButton.addEventListener("click", () => {
         gpsButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang quét vệ tinh (GPS)...`;
         gpsButton.style.background = "#1e3a8a";
-
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    
+
                     console.log(`[GPS] Đã bắt được tọa độ: Lat ${lat}, Lon ${lon}`);
-                    
-                    // Thuật toán AI phân tích phân vùng ô nhiễm dựa trên tọa độ thực tế của Vy
-                    // Nếu vĩ độ > 10.75 (Khu vực có nhiều KCN ở TP.HCM), tự gán hệ số ô nhiễm cao
+
                     if (lat > 10.75) {
-                        ai_coefficient_a = 1.30; 
+                        ai_coefficient_a = 1.30;
                         var locationName = "Hạ lưu KCN Đô Thị (Ô nhiễm cao)";
                     } else {
                         ai_coefficient_a = 0.45;
                         var locationName = "Vùng Ngoại Ô Sinh Thái";
                     }
-
-                    // Cập nhật nhãn trạng thái và nút bấm trên giao diện
+                    
                     gpsButton.innerHTML = `<i class="fas fa-map-marker-alt"></i> Vị trí: ${locationName}`;
-                    gpsButton.style.background = "#2d6a4f"; 
+                    gpsButton.style.background = "#2d6a4f";
 
-                    // Tìm đúng ô hiển thị thông số hệ số "a" để cập nhật số mới lên màn hình
                     const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
                     if (goldSpan) {
                         goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
@@ -183,7 +193,6 @@ function setupGPSFeature() {
                         const allSpans = document.querySelectorAll(".card-ai span");
                         if (allSpans.length > 1) allSpans[1].innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
                     }
-
                     alert(`🌐 [ĐỊNH VỊ CLOUD GPS THÀNH CÔNG]\nHệ thống AI đã kết nối trạm khí tượng tại tọa độ: (${lat.toFixed(4)}, ${lon.toFixed(4)})\nTự động cấu hình hệ số hồi quy thực nghiệm: a = ${ai_coefficient_a.toFixed(2)} mg/Lít.`);
                 },
                 (error) => {
@@ -200,15 +209,19 @@ function setupGPSFeature() {
 }
 
 // ==========================================
-//     🎛️     XỬ LÝ MENU CHỌN NGUỒN NƯỚC THỦ CÔNG
+//      🎛️      XỬ LÝ MENU CHỌN NGUỒN NƯỚC THỦ CÔNG (AN TOÀN CHỐNG GÃY CODE)
 // ==========================================
 function setupManualMenu() {
     const menuItems = document.querySelectorAll(".dropdown-content a, .menu-item");
+    
+    // Nếu giao diện HTML của cậu không dùng hoặc đổi tên class này, hàm sẽ tự động bỏ qua an toàn
+    if (!menuItems || menuItems.length === 0) return;
+
     menuItems.forEach(item => {
         item.addEventListener("click", (e) => {
             e.preventDefault();
             const text = item.innerText.toLowerCase();
-            
+
             if (text.includes("máy") || text.includes("sinh hoạt")) {
                 ai_coefficient_a = 0.20;
                 alert("💧 Đã chuyển sang chế độ Nước Máy Sinh Hoạt (a = 0.20 mg/L)");
@@ -219,7 +232,7 @@ function setupManualMenu() {
                 ai_coefficient_a = 4.50;
                 alert("🚨 Đã chuyển sang chế độ Nước Thải Công Nghiệp (a = 4.50 mg/L)");
             }
-            
+
             const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
             if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
         });
@@ -227,7 +240,7 @@ function setupManualMenu() {
 }
 
 // ==========================================
-//     📊     HÀM ĐỔ DỮ LIỆU LÊN GIAO DIỆN MÀN HÌNH
+//      📊      HÀM ĐỔ DỮ LIỆU LÊN GIAO DIỆN MÀN HÌNH
 // ==========================================
 function updateUserInterface(waterVolume, microplasticMass, minutesRemaining) {
     let saturationPercentage = (microplasticMass / maxCapacity) * 100;
@@ -283,8 +296,8 @@ function updateUserInterface(waterVolume, microplasticMass, minutesRemaining) {
         realtimeChart.data.labels.push(currentTime);
         realtimeChart.data.datasets[0].data.push(waterVolume);
         realtimeChart.data.datasets[1].data.push(microplasticMass);
-        
-        // Chỉ giữ lại tối đa 10 mốc đồ thị gần nhất để màn hình không bị rối
+
+        // Chỉ giữ lại tối đa 10 mốc đồ thị gần nhất để màn hình mượt mà
         if (realtimeChart.data.labels.length > 10) {
             realtimeChart.data.labels.shift();
             realtimeChart.data.datasets[0].data.shift();
@@ -297,12 +310,12 @@ function updateUserInterface(waterVolume, microplasticMass, minutesRemaining) {
     const tableBody = document.getElementById("history-log-body");
     if (tableBody) {
         const row = document.createElement("tr");
-        row.style.borderBottom = "1px solid #2c3e50";
-        
+        row.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+
         let statusHTML = `<span style="color: #52b788">Ổn định</span>`;
         if (saturationPercentage >= 50 && saturationPercentage < 80) statusHTML = `<span style="color: #ffb703">Sắp đầy</span>`;
         if (saturationPercentage >= 80) statusHTML = `<span style="color: #ff5e62; font-weight: bold;">Quá tải</span>`;
-        
+
         const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         row.innerHTML = `
             <td style="padding: 10px;">${currentTime}</td>
