@@ -20,14 +20,23 @@
     // ==========================================
     //       🟢       BIẾN TOÀN CỤC, AI & ĐỒ THỊ
     // ==========================================
-    const maxCapacity = 100; // Ngưỡng khối lượng vi nhựa bão hòa tối đa của màng (mg)
+    const maxCapacity = 100; // Khối lượng vi nhựa bão hòa tối đa (mg)
     let realtimeChart = null;
     
     // Biến điều khiển thuật toán hồi quy toán học y = ax
-    let ai_coefficient_a = 0.20; // Mặc định ban đầu (Ví dụ nước máy sinh hoạt)
+    let ai_coefficient_a = 1.30; // Mặc định khớp với menu "Nước sông / Kênh rạch" hiện hành
     let lastPlasticMass = 45.6;
     let lastTimestamp = Date.now();
     let estimatedMinutesLeft = 345; 
+
+    // Chạy ngay khi tài nguyên hệ thống sẵn sàng
+    window.addEventListener("load", () => {
+        console.log("[MCathelish] Hệ thống kích hoạt thành công!");
+        initRealtimeChart();
+        setupGPSFeature();
+        setupManualMenu();
+        connectFirebaseRealtime(); // Kích hoạt lắng nghe dữ liệu từ Firebase
+    });
 
     // ==========================================
     //       🔵       KHỞI TẠO ĐỒ THỊ REALTIME (CHART.JS)
@@ -44,22 +53,22 @@
                     {
                         label: "Lưu lượng nước tích lũy (Lít)",
                         data: [],
-                        borderColor: "#52b788",
-                        backgroundColor: "rgba(82, 183, 136, 0.1)",
+                        borderColor: "#00ffb7",
+                        backgroundColor: "rgba(0, 255, 183, 0.05)",
                         borderWidth: 3,
-                        pointRadius: 4,
+                        pointRadius: 3,
                         yAxisID: "y-water",
-                        tension: 0.4
+                        tension: 0.3
                     },
                     {
                         label: "Vi nhựa giữ lại (mg)",
                         data: [],
                         borderColor: "#ff5e62",
-                        backgroundColor: "rgba(255, 94, 98, 0.1)",
+                        backgroundColor: "rgba(255, 94, 98, 0.05)",
                         borderWidth: 3,
-                        pointRadius: 4,
+                        pointRadius: 3,
                         yAxisID: "y-plastic",
-                        tension: 0.4
+                        tension: 0.3
                     }
                 ]
             },
@@ -67,28 +76,23 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        labels: { color: "#ffffff", font: { family: "Inter", size: 12 } }
-                    }
+                    legend: { labels: { color: "#e2e8f0" } }
                 },
                 scales: {
                     x: {
-                        grid: { color: "rgba(255,255,255,0.05)" },
-                        ticks: { color: "#a0aec0", font: { size: 10 } }
+                        grid: { color: "rgba(255,255,255,0.03)" },
+                        ticks: { color: "#a0aec0" }
                     },
                     "y-water": {
                         type: "linear",
                         position: "left",
-                        title: { display: true, text: "Lưu lượng (Lít)", color: "#52b788" },
-                        grid: { color: "rgba(255,255,255,0.05)" },
-                        ticks: { color: "#a0aec0" }
+                        ticks: { color: "#00ffb7" }
                     },
                     "y-plastic": {
                         type: "linear",
                         position: "right",
-                        title: { display: true, text: "Khối lượng vi nhựa (mg)", color: "#ff5e62" },
-                        grid: { drawOnChartArea: false },
-                        ticks: { color: "#a0aec0" }
+                        ticks: { color: "#ff5e62" },
+                        grid: { display: false }
                     }
                 }
             }
@@ -99,72 +103,55 @@
     //       🟡       HÀM ĐỔ DỮ LIỆU CẬP NHẬT GIAO DIỆN REALTIME
     // ==========================================
     function updateUserInterface(waterVolume, microplasticMass, minutesLeft) {
-        // 1. Cập nhật các ô số chính trên thẻ Dashboard
+        // 1. Cập nhật các ô số chính trên Dashboard
         const waterEl = document.getElementById("water-volume");
-        const plasticEl = document.getElementById("plastic-mass");
+        const plasticEl = document.getElementById("microplastic-mass");
         
-        if (waterEl) waterEl.innerText = waterVolume.toFixed(1);
-        if (plasticEl) plasticEl.innerText = microplasticMass.toFixed(2);
+        if (waterEl) waterEl.innerHTML = `${waterVolume.toFixed(1)} <span style="font-size: 16px; color: #a0aec0;">Lít</span>`;
+        if (plasticEl) plasticEl.innerText = microplasticMass.toFixed(2) + " mg";
 
         // 2. Tính toán phần trăm bão hòa của màng lọc sinh học Keratin
-        const saturationPercentage = Math.min((microplasticMass / maxCapacity) * 100, 100);
+        let saturationPercentage = (microplasticMass / maxCapacity) * 100;
+        if (saturationPercentage > 100) saturationPercentage = 100;
         
-        const satBar = document.getElementById("saturation-bar");
-        const satText = document.getElementById("saturation-text");
-        
-        if (satBar) satBar.style.width = `${saturationPercentage}%`;
-        if (satText) satText.innerText = `${saturationPercentage.toFixed(0)}%`;
-
-        // 3. Thay đổi màu sắc cảnh báo động theo mức độ bão hòa
+        const satBar = document.getElementById("filter-progress");
         if (satBar) {
+            satBar.style.width = `${saturationPercentage.toFixed(0)}%`;
+            satBar.innerText = `${saturationPercentage.toFixed(0)}%`;
+            satBar.style.backgroundColor = saturationPercentage >= 80 ? "#ff5e62" : (saturationPercentage >= 50 ? "#ffb703" : "#2d6a4f");
+        }
+
+        // 3. Cập nhật Trạng thái màng lọc AI công nghệ
+        const statusMessage = document.getElementById("status-message");
+        if (statusMessage) {
             if (saturationPercentage >= 80) {
-                satBar.style.background = "linear-gradient(90deg, #ff5e62, #ff9966)";
-                if (satText) satText.style.color = "#ff5e62";
+                statusMessage.innerHTML = `<span style="color: #ff5e62; font-weight: bold;">Cảnh báo: Màng lọc quá tải!</span>`;
             } else if (saturationPercentage >= 50) {
-                satBar.style.background = "linear-gradient(90deg, #ffb703, #fb8500)";
-                if (satText) satText.style.color = "#ffb703";
+                statusMessage.innerHTML = `<span style="color: #ffb703;">Màng sắp bão hòa - Chú ý</span>`;
             } else {
-                satBar.style.background = "linear-gradient(90deg, #52b788, #74c69d)";
-                if (satText) satText.style.color = "#52b788";
+                statusMessage.innerHTML = `<span style="color: #52b788;">Màng lọc hoạt động ổn định</span>`;
             }
         }
 
-        // 4. Cập nhật Trạng thái màng lọc AI
-        const satStatusText = document.querySelector(".card-ai:nth-of-type(3) p");
-        if (satStatusText) {
-            if (saturationPercentage >= 80) {
-                satStatusText.innerHTML = `<span style="color: #ff5e62; font-weight:bold;">⚠️ Khẩn cấp: Màng lọc quá tải!</span>`;
-            } else if (saturationPercentage >= 50) {
-                satStatusText.innerHTML = `<span style="color: #ffb703;">⚠️ Cảnh báo: Màng lọc sắp đầy</span>`;
-            } else {
-                satStatusText.innerHTML = `<span style="color: #52b788;">Màng lọc hoạt động ổn định</span>`;
-            }
-        }
-
-        // 5. Cập nhật đồng hồ dự đoán tuổi thọ AI
-        const ageTextEl = document.getElementById("age-text");
-        const ageStatusEl = document.getElementById("age-status");
-        
-        if (ageTextEl) {
-            if (minutesLeft <= 0 || saturationPercentage >= 100) {
-                ageTextEl.innerText = "0 Giờ 0 Phút";
-                if (ageStatusEl) ageStatusEl.innerHTML = `<span style="color: #ff5e62; font-weight:bold;">Cần thay thế ngay!</span>`;
+        // 4. Cập nhật đồng hồ dự đoán tuổi thọ AI
+        const aiCountdownElement = document.getElementById("ai-countdown");
+        if (aiCountdownElement) {
+            if (saturationPercentage >= 100) {
+                aiCountdownElement.innerText = "0 Giờ 0 Phút (Thay màng!)";
             } else {
                 const hours = Math.floor(minutesLeft / 60);
-                const mins = Math.floor(minutesLeft % 60);
-                ageTextEl.innerText = `${hours} Giờ ${mins} Phút`;
-                if (ageStatusEl) ageStatusEl.innerHTML = `<span style="color: #52b788;">Đang hoạt động ổn định</span>`;
+                const mins = Math.round(minutesLeft % 60);
+                aiCountdownElement.innerText = `${hours} Giờ ${mins} Phút`;
             }
         }
 
-        // 6. Cập nhật điểm thắt nút trên Đồ thị uốn lượn
+        // 5. Cập nhật điểm uốn đồ thị Chart.js
         if (realtimeChart) {
             const currentTimeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             realtimeChart.data.labels.push(currentTimeLabel);
             realtimeChart.data.datasets[0].data.push(waterVolume);
             realtimeChart.data.datasets[1].data.push(microplasticMass);
 
-            // Giới hạn hiển thị 10 mốc gần nhất để tránh rối màn hình
             if (realtimeChart.data.labels.length > 10) {
                 realtimeChart.data.labels.shift();
                 realtimeChart.data.datasets[0].data.shift();
@@ -173,16 +160,13 @@
             realtimeChart.update();
         }
 
-        // 7. Tạo dòng log ghi nhận mới thả vào Nhật Ký Giám Sát Hệ Thống
+        // 6. Đổ dữ liệu vào bảng Nhật Ký Giám Sát Hệ Thống
         const tableBody = document.getElementById("history-log-body");
         if (tableBody) {
             const row = document.createElement("tr");
             row.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
             
-            let statusHTML = `<span style="color: #52b788">Ổn định</span>`;
-            if (saturationPercentage >= 50 && saturationPercentage < 80) statusHTML = `<span style="color: #ffb703">Sắp đầy</span>`;
-            if (saturationPercentage >= 80) statusHTML = `<span style="color: #ff5e62; font-weight: bold;">Quá tải</span>`;
-            
+            let statusHTML = saturationPercentage >= 80 ? `<span style="color: #ff5e62">Quá tải</span>` : (saturationPercentage >= 50 ? `<span style="color: #ffb703">Sắp đầy</span>` : `<span style="color: #52b788">Ổn định</span>`);
             const currentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             row.innerHTML = `
                 <td style="padding: 10px;">${currentTimeStr}</td>
@@ -192,8 +176,7 @@
             `;
             tableBody.insertBefore(row, tableBody.firstChild);
 
-            // Giới hạn lưu tối đa 8 dòng log gần nhất hiển thị trên giao diện
-            if (tableBody.children.length > 8) {
+            if (tableBody.children.length > 6) {
                 tableBody.removeChild(tableBody.lastChild);
             }
         }
@@ -208,162 +191,126 @@
 
         gpsButton.addEventListener("click", () => {
             gpsButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang quét vệ tinh (Cloud GPS)...`;
-            gpsButton.style.background = "#1e3a8a";
 
-            // Cấu hình chống treo ngầm nghiêm ngặt ép chip định vị di động hoạt động
             const gpsOptions = {
-                enableHighAccuracy: true, // Ưu tiên quét chip GPS phần cứng cao nhất
-                timeout: 8000,            // Không để đơ nút, quá 8 giây tự động kích hoạt lưới bảo vệ cứu cánh
-                maximumAge: 0             // Ép buộc làm mới tọa độ địa lý sạch
+                enableHighAccuracy: true, 
+                timeout: 8000,            // Không để đơ nút, quá 8 giây tự động kích hoạt chế độ dự phòng
+                maximumAge: 0             
             };
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        // LẤY TỌA ĐỘ GPS THỰC THÀNH CÔNG
                         const lat = position.coords.latitude;
                         const lon = position.coords.longitude;
                         
-                        console.log(`[GPS THÀNH CÔNG] Lat: ${lat}, Lon: ${lon}`);
+                        // Thuật toán AI phân tích hệ số ô nhiễm dựa trên vĩ độ địa lý
+                        ai_coefficient_a = lat > 10.75 ? 1.30 : 0.45;
+                        let locationName = lat > 10.75 ? "Hạ lưu KCN Đô Thị (Ô nhiễm)" : "Khu dân cư sinh hoạt";
                         
-                        // THUẬT TOÁN AI BÓC TÁCH VÙNG Ô NHIỄM DỰA TRÊN VĨ ĐỘ ĐỊA LÝ
-                        if (lat > 10.75) {
-                            ai_coefficient_a = 1.30; 
-                            var locationName = "Hạ lưu KCN Đô Thị (Ô nhiễm cao)";
-                        } else {
-                            ai_coefficient_a = 0.45;
-                            var locationName = "Khu dân cư sinh hoạt";
-                        }
-                        
-                        // 1. Đồng bộ nhãn trạng thái lên giao diện nút bấm
                         gpsButton.innerHTML = `<i class="fas fa-map-marker-alt"></i> Vị trí: ${locationName}`;
-                        gpsButton.style.background = "#2d6a4f"; // Đổi sang màu xanh lá cây thành công
+                        gpsButton.style.background = "#2d6a4f"; 
                         
-                        // 2. Đồng bộ hiển thị hệ số AI (a) màu vàng trên màn hình
                         const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
                         if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
 
-                        // 🔥 FIX LỖI ĐÓNG BĂNG: Ép tính toán bẻ gãy trạng thái 0 số ngay lập tức
-                        let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 0.0;
-                        if (currentWater === 0) currentWater = 16.5; // Nạp dung tích mẫu 16.5 Lít chạy demo sinh động nếu máy đang trống dữ liệu
-                        
+                        // Cập nhật lại giao diện ngay khi có hệ số AI mới
+                        let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 16.5;
                         const computedPlasticMass = currentWater * ai_coefficient_a;
-                        
-                        // Gọi trực tiếp hàm đổ giao diện để kích hoạt hệ thống hồi quy
                         updateUserInterface(currentWater, computedPlasticMass, estimatedMinutesLeft);
                         
-                        alert(`🌐 [CLOUD GPS THÀNH CÔNG]\nTọa độ thực tế: (${lat.toFixed(4)}, ${lon.toFixed(4)})\nAI tự động nạp thuật toán hồi quy thực nghiệm: a = ${ai_coefficient_a.toFixed(2)} mg/Lít.`);
+                        alert(`🌐 [CLOUD GPS THÀNH CÔNG]\nTọa độ: (${lat.toFixed(4)}, ${lon.toFixed(4)})\nAI áp dụng hệ số hồi quy: a = ${ai_coefficient_a.toFixed(2)} mg/Lít.`);
                     },
                     (error) => {
-                        console.error("[GPS ERROR/TIMEOUT LOG]", error);
-                        
-                        // 🛡️ LƯỚI BẢO VỆ DỰ PHÒNG KHI ĐI THI (FALLBACK PLAN)
-                        // Nếu gặp phòng thi bị khuất sóng vệ tinh hoặc kẹt luồng phần cứng thiết bị
-                        // Tự động kích hoạt cơ chế Trạm nội đô (Marie Curie Quận 3) để đảm bảo an toàn giao diện!
+                        console.error("[GPS ERROR]", error);
+                        // Kịch bản dự phòng khi mất sóng vệ tinh trong phòng thi
                         ai_coefficient_a = 0.45;
+                        gpsButton.innerHTML = `<i class="fas fa-map-marker-alt"></i> Trạm nội đô: Quận 3, TP.HCM`;
+                        gpsButton.style.background = "#2d6a4f"; 
 
-                        setTimeout(() => {
-                            gpsButton.innerHTML = `<i class="fas fa-map-marker-alt"></i> Trạm nội đô: Quận 3, TP.HCM`;
-                            gpsButton.style.background = "#2d6a4f"; 
+                        const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
+                        if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
 
-                            const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
-                            if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
-
-                            let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 0.0;
-                            if (currentWater === 0) currentWater = 16.5;
-
-                            const computedPlasticMass = currentWater * ai_coefficient_a;
-                            updateUserInterface(currentWater, computedPlasticMass, estimatedMinutesLeft);
-
-                            console.log("[GPS] Đã đồng bộ luồng Trạm khí tượng dự phòng nội đô mặc định.");
-                        }, 1000);
+                        let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 16.5;
+                        updateUserInterface(currentWater, currentWater * ai_coefficient_a, estimatedMinutesLeft);
                     },
                     gpsOptions
                 );
             } else {
-                alert("Thiết bị hoặc trình duyệt không hỗ trợ Geolocation.");
+                alert("Thiết bị không hỗ trợ Geolocation.");
             }
         });
     }
 
     // ==========================================
-    //       🎨       XỬ LÝ THAY ĐỔI MENU THỦ CÔNG (GHI ĐÈ)
+    //       🎨       XỬ LÝ THAY ĐỔI MENU THỦ CÔNG
     // ==========================================
     function setupManualMenu() {
         const selectMenu = document.getElementById("water-type-select");
-        if (!selectMenu) return;
+        if (selectMenu) {
+            // Trường hợp dùng thẻ <select> mới
+            selectMenu.addEventListener("change", (e) => {
+                ai_coefficient_a = parseFloat(e.target.value);
+                updateManualUI();
+            });
+        } else {
+            // Trường hợp dùng thẻ danh sách <a> cũ
+            const menuItems = document.querySelectorAll(".dropdown-content a, .menu-item");
+            menuItems.forEach(item => {
+                item.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    const text = item.innerText.toLowerCase();
+                    if (text.includes("máy")) ai_coefficient_a = 0.20;
+                    else if (text.includes("sông")) ai_coefficient_a = 1.30;
+                    else if (text.includes("thải")) ai_coefficient_a = 4.50;
+                    updateManualUI();
+                });
+            });
+        }
+    }
 
-        selectMenu.addEventListener("change", (e) => {
-            ai_coefficient_a = parseFloat(e.target.value);
-            
-            // Cập nhật số hiển thị màu vàng trên thẻ AI Control
-            const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
-            if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
+    function updateManualUI() {
+        const goldSpan = document.querySelector(".card-ai span[style*='#f59e0b']");
+        if (goldSpan) goldSpan.innerText = `${ai_coefficient_a.toFixed(2)} mg/Lít`;
 
-            // Khôi phục nhãn nút bấm định vị về mặc định ban đầu
-            const gpsButton = document.querySelector(".card-ai button");
-            if (gpsButton) {
-                gpsButton.innerHTML = `<i class="fas fa-crosshairs"></i> Tự động định vị khu vực (Cloud GPS)`;
-                gpsButton.style.background = "linear-gradient(135deg, #0072ff, #00c6ff)";
-            }
-
-            // Ép kích hoạt tính toán cập nhật lại Realtime lập tức
-            let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 0.0;
-            if (currentWater === 0) currentWater = 16.5;
-            
-            const computedPlasticMass = currentWater * ai_coefficient_a;
-            updateUserInterface(currentWater, computedPlasticMass, estimatedMinutesLeft);
-        });
+        let currentWater = parseFloat(document.getElementById("water-volume")?.innerText) || 16.5;
+        updateUserInterface(currentWater, currentWater * ai_coefficient_a, estimatedMinutesLeft);
     }
 
     // ==========================================
-    //       🛰️       KẾT NỐI LUỒNG FIREBASE REALTIME DATABASE
+    //       🛰️       SỬA LỖI ĐỒNG BỘ CHUẨN FIREBASE REALTIME DỮ LIỆU THẬT
     // ==========================================
     function connectFirebaseRealtime() {
-        const iotRef = database.ref("EcoFilter_IoT_Data");
-        
-        iotRef.on("value", (snapshot) => {
+        // Đọc thẳng từ nút gốc (/) khớp hoàn toàn với cấu trúc Firebase trong ảnh
+        database.ref().on("value", (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
-            // Đọc dữ liệu từ cảm biến thực tế được đẩy lên từ phần cứng IoT
-            const waterVolume = parseFloat(data.WaterVolume_Litre) || 0.0;
-            
-            // THUẬT TOÁN HỒI QUY TOÁN HỌC MÁY HỌC (AI REGRESSION CORE): y = a * x
-            const microplasticMass = waterVolume * ai_coefficient_a;
+            // Đọc chính xác chữ viết thường khớp 100% với Firebase của cậu
+            let waterVolume = data.waterVolume !== undefined ? parseFloat(data.waterVolume) : 16.5;
+            let microplasticMass = data.microplasticMass !== undefined ? parseFloat(data.microplasticMass) : (waterVolume * ai_coefficient_a);
 
-            // Thuật toán AI dự đoán thời gian bảo trì màng lọc Keratin còn lại (Phút)
-            // Tốc độ hấp phụ vi nhựa dựa trên biến thiên dòng chảy thời gian thực
-            const currentTimestamp = Date.now();
-            const timeDeltaMinutes = (currentTimestamp - lastTimestamp) / 60000; 
+            // Tính toán thuật toán dự đoán tuổi thọ màng lọc AI dựa trên biến thiên dòng chảy thực
+            const now = Date.now();
+            const timePassedMinutes = (now - lastTimestamp) / 60000;
             
-            if (timeDeltaMinutes > 0 && (microplasticMass - lastPlasticMass) > 0) {
-                const adsorptionRate = (microplasticMass - lastPlasticMass) / timeDeltaMinutes; // mg/phút
-                const remainingCapacity = maxCapacity - microplasticMass;
-                estimatedMinutesLeft = adsorptionRate > 0 ? (remainingCapacity / adsorptionRate) : 345;
+            if (timePassedMinutes > 0 && microplasticMass > lastPlasticMass && lastPlasticMass > 0) {
+                let accumulationRate = (microplasticMass - lastPlasticMass) / timePassedMinutes;
+                let plasticRemaining = maxCapacity - microplasticMass;
+                if (plasticRemaining < 0) plasticRemaining = 0;
+                if (accumulationRate > 0) estimatedMinutesLeft = plasticRemaining / accumulationRate;
+            } else {
+                estimatedMinutesLeft = 345; // Giá trị ổn định mặc định
             }
-
-            // Đè giới hạn tối đa tránh văng lỗi tràn thanh tiến trình
-            estimatedMinutesLeft = Math.max(0, Math.min(estimatedMinutesLeft, 1440));
 
             // Lưu vết lịch sử cho vòng lặp kế tiếp
             lastPlasticMass = microplasticMass;
-            lastTimestamp = currentTimestamp;
+            lastTimestamp = now;
 
-            // Đổ toàn bộ dữ liệu hợp nhất lên màn hình Dashboard
+            // Đổ dữ liệu thật lên màn hình Dashboard tức thì!
             updateUserInterface(waterVolume, microplasticMass, estimatedMinutesLeft);
         }, (error) => {
             console.error("[FIREBASE CONNECTION ERROR]", error);
         });
     }
-
-    // ==========================================
-    //       🚀       KHỞI CHẠY TOÀN BỘ HỆ THỐNG
-    // ==========================================
-    document.addEventListener("DOMContentLoaded", () => {
-        initRealtimeChart();
-        setupGPSFeature();
-        setupManualMenu();
-        connectFirebaseRealtime();
-    });
 })();
