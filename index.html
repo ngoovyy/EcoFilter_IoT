@@ -4,18 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoFilter - IoT Dashboard</title>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
     <style>
         :root {
             --primary-neon: #00ffb7;
             --accent-pink: #ff5e62;
-            --ai-blue: #38bdf8; 
+            --ai-blue: #38bdf8;
             --bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
             --card-glass: rgba(255, 255, 255, 0.05);
             --border-glass: rgba(255, 255, 255, 0.1);
@@ -77,49 +74,14 @@
             transform: translateY(-5px);
             box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.1);
         }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 50%; height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255,255,255,0.03), transparent);
-            transition: 0.5s;
-        }
-        .card:hover::before {
-            left: 150%;
-        }
-        .card-ai {
-            border: 1px solid rgba(56, 189, 248, 0.2);
-            box-shadow: 0 8px 32px 0 rgba(38, 166, 254, 0.05);
-        }
-        .card-ai:hover {
-            box-shadow: 0 12px 40px 0 rgba(38, 166, 254, 0.15);
-        }
-        .icon-container {
-            font-size: 36px;
-            margin-bottom: 15px;
-        }
+        .card-ai { border: 1px solid rgba(56, 189, 248, 0.2); }
+        .icon-container { font-size: 36px; margin-bottom: 15px; }
         .icon-water { color: var(--primary-neon); }
         .icon-plastic { color: var(--accent-pink); }
         .icon-ai { color: var(--ai-blue); }
-        .value {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 5px;
-            letter-spacing: 0.5px;
-        }
-        .ai-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--ai-blue);
-            margin-bottom: 8px;
-        }
-        .label {
-            font-size: 13px;
-            color: #a0aec0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+        .value { font-size: 28px; font-weight: bold; margin-bottom: 5px; }
+        .ai-value { font-size: 24px; font-weight: bold; color: var(--ai-blue); margin-bottom: 8px; }
+        .label { font-size: 13px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px; }
         .progress-container {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
@@ -129,11 +91,11 @@
             border: 1px solid rgba(255,255,255,0.05);
         }
         .progress {
-            background: linear-gradient(90deg, #52b788, #74c69d);
+            background: var(--primary-neon);
             width: 0%;
             height: 100%;
             border-radius: 10px;
-            transition: width 0.5s ease, background-color 0.5s ease;
+            transition: width 0.5s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -151,17 +113,7 @@
             font-weight: bold;
             margin-top: 12px;
             width: 100%;
-            transition: all 0.3s ease;
             font-size: 13px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.2);
-        }
-        .card-ai button:hover {
-            opacity: 0.9;
-            transform: scale(1.02);
         }
         .card-ai select {
             background: rgba(13, 27, 42, 0.8);
@@ -171,97 +123,63 @@
             border-radius: 6px;
             margin-top: 10px;
             width: 100%;
-            cursor: pointer;
-            outline: none;
-            font-size: 13px;
         }
-        .chart-container {
-            width: 100%;
-            max-width: 1000px;
-            height: 380px;
-            margin-bottom: 25px;
-            box-sizing: border-box;
-        }
-        .history-container {
-            width: 100%;
-            max-width: 1000px;
-            box-sizing: border-box;
-        }
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 14px;
-            text-align: left;
-        }
-        .history-table th {
-            background: rgba(255, 255, 255, 0.07);
-            color: var(--primary-neon);
-            padding: 12px 10px;
-            font-weight: 600;
-        }
-        @media (max-width: 768px) {
-            .dashboard-grid { grid-template-columns: 1fr; }
-            body { padding: 10px; }
-            .header h1 { font-size: 26px; }
-        }
+        .chart-container { width: 100%; max-width: 1000px; height: 380px; margin-bottom: 25px; }
+        .history-container { width: 100%; max-width: 1000px; }
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .history-table th { background: rgba(255, 255, 255, 0.07); color: var(--primary-neon); padding: 12px 10px; text-align: left; }
+        .history-table td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-good { background: rgba(0, 255, 183, 0.1); color: var(--primary-neon); }
+        .status-warn { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+        .status-danger { background: rgba(255, 94, 98, 0.1); color: var(--accent-pink); }
     </style>
 </head>
 <body>
-
     <div class="header">
-        <h1><i class="fas fa-seedling icon-water"></i> MCathelish - EcoFilter</h1>
+        <h1><i class="fas fa-seedling icon-water"></i> EcoFilter</h1>
         <p>Hệ Thống Giám Sát Màng Lọc Hấp Phụ Vi Nhựa Công Nghệ AI Realtime</p>
     </div>
-
     <div class="dashboard-grid">
-        
         <div class="card">
             <div class="icon-container icon-water">
                 <i class="fas fa-faucet-drip"></i>
             </div>
-            <div class="value" id="water-volume">0.0 <span style="font-size: 16px; color: #a0aec0;">Lít</span></div>
+            <div class="value"><span id="water-volume">0.00</span> <span style="font-size: 16px; color: #a0aec0;">L</span></div>
             <div class="label">Tổng lưu lượng qua màng</div>
         </div>
-
         <div class="card">
             <div class="icon-container icon-plastic">
                 <i class="fas fa-microchip"></i>
             </div>
-            <div class="value" id="microplastic-mass">0.00 mg</div>
+            <div class="value"><span id="plastic-mass">0.00</span> <span style="font-size: 16px; color: #a0aec0;">mg</span></div>
             <div class="label">Khối lượng vi nhựa giữ lại</div>
         </div>
-
         <div class="card">
             <div class="icon-container icon-water">
                 <i class="fas fa-filter"></i>
             </div>
             <div class="progress-container">
-                <div class="progress" id="filter-progress">0%</div>
+                <div class="progress" id="progress-fill">0%</div>
             </div>
-            <div class="label" id="status-message">Màng lọc hoạt động ổn định</div>
+            <div class="label" id="progress-percent">Mức độ bão hòa vật lý</div>
         </div>
-
         <div class="card card-ai">
             <div class="icon-container icon-ai">
                 <i class="fas fa-brain"></i>
             </div>
             <div style="font-size: 13px; color: #a0aec0;">
-                Hệ số hồi quy thực nghiệm (a):<br>
-                <span style="font-size: 18px; font-weight: bold; color: #f59e0b;">1.30 mg/Lít</span>
+                Khu vực dòng chảy khảo sát:<br>
+                <span style="font-size: 14px; font-weight: bold; color: #38bdf8;" id="current-region">Hạ lưu sông / Khu công nghiệp (1.30 mg/L)</span>
             </div>
-            
-            <select id="water-type-select">
-                <option value="0.20">Nước máy sinh hoạt (a = 0.20)</option>
-                <option value="1.30" selected>Nước sông / Kênh rạch (a = 1.30)</option>
-                <option value="4.50">Nước thải KCN sơ cấp (a = 4.50)</option>
-            </select>
-
-            <button type="button">
-                <i class="fas fa-crosshairs"></i> Tự động định vị khu vực (Cloud GPS)
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button id="btn-manual-1" class="active" style="background:#1e293b; padding:6px; font-size:11px; border:none; color:white; border-radius:4px; cursor:pointer;">Hạ Lưu (1.30)</button>
+                <button id="btn-manual-2" style="background:#1e293b; padding:6px; font-size:11px; border:none; color:white; border-radius:4px; cursor:pointer;">Nội Đô (0.45)</button>
+            </div>
+            <button type="button" id="btn-gps">
+                <i class="fas fa-crosshairs"></i> Tự động định vị (Cloud GPS)
             </button>
         </div>
-
         <div class="card card-ai">
             <div class="icon-container icon-ai">
                 <i class="fas fa-hourglass-half"></i>
@@ -269,9 +187,7 @@
             <div class="ai-value" id="ai-countdown">-- Giờ -- Phút</div>
             <div class="label">Thời gian bảo trì dự kiến từ AI</div>
         </div>
-
     </div>
-
     <div class="chart-container card">
         <h3 style="text-align: left; margin-bottom: 15px; margin-top: 0; font-size: 16px;">
             <i class="fas fa-chart-line" style="color: var(--primary-neon);"></i> ĐỒ THỊ THEO DÕI THỜI GIAN THỰC
@@ -280,7 +196,6 @@
             <canvas id="realtimeChart"></canvas>
         </div>
     </div>
-
     <div class="history-container card">
         <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px; margin-top: 0; text-align: left; font-size: 16px;">
             <i class="fas fa-clipboard-list" style="color: var(--ai-blue);"></i> Nhật Ký Giám Sát Hệ Thống (Realtime Logs)
@@ -295,12 +210,11 @@
                         <th>Trạng thái hệ thống</th>
                     </tr>
                 </thead>
-                <tbody id="history-log-body">
-                    </tbody>
+                <tbody>
+                </tbody>
             </table>
         </div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
