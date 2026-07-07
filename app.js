@@ -19,7 +19,7 @@ const database = app.database();
 // =====================================================
 //                 🟢 BIẾN TOÀN CỤC, AI & ĐỒ THỊ
 // =====================================================
-const maxCapacity = 100; 
+const maxCapacity = 100; // Sức chứa tối đa của màng (100 mg vi nhựa)
 let realtimeChart = null;
 
 let ai_coefficient_a = 1.30; // Mặc định vùng ô nhiễm
@@ -31,7 +31,8 @@ window.addEventListener("load", () => {
     console.log("[MCathelish] Hệ thống kích hoạt thành công!");
     initRealtimeChart();
     setupGPSFeature();
-    setupManualMenu(); // Khớp với 2 nút bấm thủ công mới
+    setupManualMenu();
+    connectFirebaseRealtime(); // 🔥 ĐÃ SỬA: Kích hoạt kết nối Firebase ngay khi tải trang!
 });
 
 // =====================================================
@@ -84,11 +85,10 @@ function initRealtimeChart() {
 //          🟡 HÀM ĐỔ DỮ LIỆU CẬP NHẬT GIAO DIỆN REALTIME
 // =====================================================
 function updateUserInterface(waterVolume, microplasticMass, minutesLeft) {
-    // Đã sửa đổi khớp với index.html của Vy
     const waterEl = document.getElementById("water-volume");
     const plasticEl = document.getElementById("plastic-mass");
 
-    if (waterEl) waterEl.innerHTML = `${waterVolume.toFixed(1)} <span style="font-size: 16px; color: #a0aec0;">L</span>`;
+    if (waterEl) waterEl.innerHTML = `${waterVolume.toFixed(2)} <span style="font-size: 16px; color: #a0aec0;">L</span>`;
     if (plasticEl) plasticEl.innerText = microplasticMass.toFixed(2);
 
     let saturationPercentage = (microplasticMass / maxCapacity) * 100;
@@ -134,7 +134,7 @@ function updateUserInterface(waterVolume, microplasticMass, minutesLeft) {
         const currentTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         row.innerHTML = `
             <td>${currentTimeStr}</td>
-            <td>${waterVolume.toFixed(1)} L</td>
+            <td>${waterVolume.toFixed(2)} L</td>
             <td>${microplasticMass.toFixed(2)} mg</td>
             <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
         `;
@@ -169,6 +169,7 @@ function setupGPSFeature() {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
 
+                    // Phân loại vĩ độ thông minh theo đúng logic của Vy
                     ai_coefficient_a = lat > 10.75 ? 1.30 : 0.45;
                     let locationName = lat > 10.75 ? "Hạ lưu sông / Khu công nghiệp (1.30 mg/L)" : "Khu dân cư sinh hoạt / Nội đô (0.45 mg/L)";
 
@@ -177,19 +178,18 @@ function setupGPSFeature() {
                     const regionEl = document.getElementById("current-region");
                     if (regionEl) regionEl.innerText = locationName;
 
-                    // Bỏ chọn trạng thái active của menu thủ công khi dùng GPS để tránh xung đột trực quan
                     document.getElementById("btn-manual-1")?.classList.remove("active");
                     document.getElementById("btn-manual-2")?.classList.remove("active");
 
                     let currentWater = getPureWaterValue();
                     updateUserInterface(currentWater, currentWater * ai_coefficient_a, estimatedMinutesLeft);
-                    alert(`🌐 [CLOUD GPS THÀNH CÔNG]\nTọa độ: (${lat.toFixed(4)}, ${lon.toFixed(4)})\nAI áp dụng hệ số hồi quy: a = ${ai_coefficient_a.toFixed(2)} mg/L.`);
+                    alert(`🌐 [CLOUD GPS THÀNH CÔNG]\nTọa độ: (${lat.toFixed(4)}, ${lon.toFixed(4)})\nÁp dụng hệ số hồi quy thực nghiệm: a = ${ai_coefficient_a.toFixed(2)} mg/L.`);
                 },
                 (error) => {
                     ai_coefficient_a = 0.45;
                     gpsButton.innerHTML = `<i class="fas fa-crosshairs"></i> Tự động định vị (Cloud GPS)`;
                     const regionEl = document.getElementById("current-region");
-                    if (regionEl) regionEl.innerText = "Trạm nội đô: Quận 3, TP.HCM (0.45 mg/L)";
+                    if (regionEl) regionEl.innerText = "Trạm mặc định: Nội đô TP.HCM (0.45 mg/L)";
                     
                     let currentWater = getPureWaterValue();
                     updateUserInterface(currentWater, currentWater * ai_coefficient_a, estimatedMinutesLeft);
@@ -236,18 +236,31 @@ function connectFirebaseRealtime() {
     database.ref().on("value", (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
+        
         let waterVolume = data.waterVolume !== undefined ? parseFloat(data.waterVolume) : 0;
+        let turbidityVolt = data.turbidity !== undefined ? parseFloat(data.turbidity) : 3.3; // Đọc volt độ đục từ ESP32
+        
+        // Công thức tính hạt nhựa tích lũy lũy tiến
         let microplasticMass = waterVolume * ai_coefficient_a;
         
         const now = Date.now();
         const timePassedMinutes = (now - lastTimestamp) / 60000;
 
+        // Thuật toán suy luận AI dự báo tuổi thọ màng kết hợp biến số độ đục thực tế
         if (timePassedMinutes > 0 && microplasticMass > lastPlasticMass && lastPlasticMass > 0) {
+            // Tốc độ tích tụ hạt nhựa dựa trên dòng chảy thực tế
             let accumulationRate = (microplasticMass - lastPlasticMass) / timePassedMinutes;
+            
+            // Yếu tố cản trở cơ học: Điện áp càng thấp tức là nước càng đục (hạt lơ lửng bám màng nhiều)
+            // Hệ số phạt (penalty factor) tỷ lệ nghịch với điện áp cảm biến độ đục
+            let turbidityFactor = (3.3 / (turbidityVolt + 0.1)); 
+            let adjustedAccumulationRate = accumulationRate * turbidityFactor;
+
             let plasticRemaining = maxCapacity - microplasticMass;
             if (plasticRemaining < 0) plasticRemaining = 0;
-            if (accumulationRate > 0) {
-                estimatedMinutesLeft = plasticRemaining / accumulationRate;
+            
+            if (adjustedAccumulationRate > 0) {
+                estimatedMinutesLeft = plasticRemaining / adjustedAccumulationRate;
             }
         } else if (microplasticMass >= maxCapacity) {
             estimatedMinutesLeft = 0;
@@ -258,10 +271,13 @@ function connectFirebaseRealtime() {
         
         lastPlasticMass = microplasticMass;
         lastTimestamp = now;
+        
+        // Kích hoạt cập nhật giao diện và vẽ đồ thị mượt mà
         updateUserInterface(waterVolume, microplasticMass, estimatedMinutesLeft);
     }, (error) => {
         console.error("[FIREBASE CONNECTION ERROR]", error);
     });
 }
 })();
+
 
