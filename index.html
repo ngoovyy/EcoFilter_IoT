@@ -3,206 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoFilter - IoT Dashboard</title>
+    <title>EcoFilter - Hệ thống giám sát màng lọc hấp phụ vi nhựa</title>
+    <!-- Thư viện giữ nguyên phục vụ xử lý đồ thị và kết nối Realtime -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --primary-neon: #00ffb7;
-            --accent-pink: #ff5e62;
-            --bg-gradient: linear-gradient(135deg, #0d1b2a 0%, #1b263b 100%);
-            --card-glass: rgba(255, 255, 255, 0.05);
-            --border-glass: rgba(255, 255, 255, 0.1);
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--bg-gradient);
-            color: #f8f9fa;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
+            background-color: #f8fafc;
+            color: #1e293b;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
+            min-height: 100vh;
+            padding: 24px 20px;
         }
 
+        .dashboard-wrapper {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 28px 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+            border: 1px solid #e2e8f0;
+        }
+
+        /* HEADER */
         .header {
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 24px;
         }
 
         .header h1 {
-            margin: 0;
-            font-size: 32px;
-            letter-spacing: 1.5px;
-            color: #ffffff;
-            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-        }
-
-        .subtitle {
-            margin: 5px 0 0 0;
-            opacity: 0.7;
-            font-size: 14px;
-            color: #a0aec0;
-        }
-
-        /* Đèn trạng thái IoT */
-        .status-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px 18px;
-            border-radius: 30px;
-            border: 1px solid var(--border-glass);
-            margin: 15px 0 25px 0;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            background-color: #00bfff;
-            border-radius: 50%;
-            box-shadow: 0 0 8px #00bfff;
-            animation: blink 1.5s infinite;
-        }
-
-        @keyframes blink {
-            0% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
-            50% { opacity: 1; box-shadow: 0 0 12px #00bfff; }
-            100% { opacity: 0.4; box-shadow: 0 0 4px #00bfff; }
-        }
-
-        /* Lưới hiển thị các ô dữ liệu số */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        /* Hiệu ứng kính mờ Glassmorphism cho các Card */
-        .card {
-            background: var(--card-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px 0 rgba(0, 255, 183, 0.15);
-            border: 1px solid rgba(0, 255, 183, 0.3);
-        }
-
-        .card h3 {
-            margin: 0;
-            font-size: 15px;
-            color: #a0aec0;
-            letter-spacing: 0.5px;
-        }
-
-        /* Số to phát sáng Neon */
-        .value {
-            font-size: 42px;
-            font-weight: 800;
-            color: var(--primary-neon);
-            text-shadow: 0 0 10px rgba(0, 255, 183, 0.3), 0 0 20px rgba(0, 255, 183, 0.1);
-            margin: 15px 0;
-        }
-
-        .card-pink .value {
-            color: var(--accent-pink);
-            text-shadow: 0 0 10px rgba(255, 94, 98, 0.3), 0 0 20px rgba(255, 94, 98, 0.1);
-        }
-
-        #status-message {
-            font-size: 14px;
-            font-weight: 500;
-            color: #e2e8f0;
-        }
-
-        /* Thanh tiến trình độ bão hòa nâng cấp */
-        .progress-bar-container {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            height: 24px;
-            width: 100%;
-            margin-top: 15px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .progress-bar-fill {
-            background-color: #2d6a4f;
-            height: 100%;
-            width: 0%;
-            transition: width 0.5s ease, background-color 0.5s ease;
+            font-size: 24px;
+            font-weight: 700;
+            color: #166534;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
+            gap: 8px;
         }
 
-        /* Vùng chứa biểu đồ rộng 100% */
-        .chart-container {
+        .header p {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        .header .sub-caption {
+            font-size: 11px;
+            color: #059669;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* CARDS & DIVIDERS */
+        .cards-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .divider {
+            height: 1px;
+            background-color: #e2e8f0;
+            margin: 20px 0;
             width: 100%;
-            max-width: 1000px;
-            margin-top: 20px;
-            box-sizing: border-box;
+        }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .card-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .card-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .card-value .unit {
+            font-size: 20px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .card-value-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-top: 2px;
+        }
+
+        .card-subtext {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .card-time {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 6px;
+        }
+
+        /* Thanh bão hòa (Progress bar) */
+        .progress-container {
+            width: 80%;
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            width: 0%;
+            background-color: #22c55e;
+            border-radius: 4px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        .hidden-elements {
+            display: none !important;
         }
     </style>
-    
-   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🌊 EcoFilter Dashboard</h1>
-        <p class="subtitle">Hệ thống giám sát bẫy vi nhựa thời gian thực - Màng sinh học Keratin</p>
-    </div>
-
-    <div class="status-container">
-        <div class="status-dot"></div>
-        <span style="font-size: 13px; color: #cbd5e0;">Hệ thống: Đang mô phỏng dữ liệu IoT</span>
-    </div>
-
-    <div class="dashboard-grid">
-        <div class="card">
-            <h3>💧 TỔNG LƯU LƯỢNG NƯỚC</h3>
-            <div class="value" id="water-volume">0.0 Lít</div>
+    <div class="dashboard-wrapper">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🌱 EcoFilter</h1>
+            <p>
+                Hệ thống giám sát màng lọc hấp phụ vi nhựa thời gian thực
+                <br>
+                <span class="sub-caption">Mô hình toán học kết hợp IoT</span>
+            </p>
         </div>
 
-        <div class="card card-pink">
-            <h3>🧫 VI NHỰA GIỮ LẠI</h3>
-            <div class="value" id="microplastic-mass">0.00 mg</div>
-        </div>
+        <div class="cards-container">
 
-        <div class="card">
-            <h3>⚠️ MỨC ĐỘ BÃO HÒA MÀNG</h3>
-            <div id="status-message" style="margin-top: 10px;">Đang kiểm tra...</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar-fill" id="filter-progress">0%</div>
+            <!-- THẺ 1: TỔNG LƯỢNG NƯỚC ĐÃ LỌC -->
+            <div class="card">
+                <div class="card-icon">💧</div>
+                <div class="card-label">Tổng lượng nước đã lọc</div>
+                <div class="card-value">
+                    <span id="water-volume">0.00</span> <span class="unit">L</span>
+                </div>
             </div>
+
+            <div class="divider"></div>
+
+            <!-- THẺ 2: KHỐI LƯỢNG VI NHỰA ƯỚC LƯỢNG -->
+            <div class="card">
+                <div class="card-icon">🧬</div>
+                <div class="card-label">Khối lượng vi nhựa ước lượng</div>
+                <div class="card-value">
+                    <span id="plastic-mass">0.00</span> <span class="unit">mg</span>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- THẺ 3: MỨC ĐỘ BÃÕ HÒA MÀNG LỌC -->
+            <div class="card">
+                <div class="card-icon" id="sat-icon">🟢</div>
+                <div class="card-label">Mức độ bão hòa màng lọc</div>
+                <div class="card-value">
+                    <span id="progress-percent">0</span> <span class="unit">%</span>
+                </div>
+                <div class="progress-container">
+                    <div class="progress" id="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- THẺ 4: PHÂN LOẠI NGUỒN NƯỚC -->
+            <div class="card">
+                <div class="card-icon">📍</div>
+                <div class="card-label">Phân loại nguồn nước</div>
+                <div class="card-value-text" id="waterSource">Nguồn nước công nghiệp</div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- THẺ 5: TUỔI THỌ MÀNG LỌC -->
+            <div class="card">
+                <div class="card-icon">⏳</div>
+                <div class="card-label">Tuổi thọ màng lọc</div>
+                <div class="card-value">
+                    <span id="filter-life">100</span> <span class="unit">%</span>
+                </div>
+                <div class="card-time" id="filterLifeElement">Bảo trì sau: -- giờ -- phút</div>
+            </div>
+
         </div>
     </div>
 
-    <div class="chart-container card">
-        <h3 style="text-align: left; margin-bottom: 15px;">📈 ĐỒ THỊ THEO DÕI THỜI GIAN THỰC</h3>
-        <div style="position: relative; height: 320px; width: 100%;">
-            <canvas id="realtimeChart"></canvas>
-        </div>
+    <!-- CÁC THÀNH PHẦN ẨN ĐỂ ĐỒNG BỘ LOGIC HỆ THỐNG -->
+    <div class="hidden-elements">
+        <button id="btn-manual-1"></button>
+        <button id="btn-manual-2"></button>
+        <button id="btn-gps"></button>
+        <canvas id="realtimeChart"></canvas>
     </div>
 
     <script src="app.js"></script>
 </body>
 </html>
+
+
+
