@@ -1,4 +1,5 @@
 (function() {
+    // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyCTL732xXKFUOtZnueYzoBtz_dyhOS1p_8",
         authDomain: "ecofilter-iot.firebaseapp.com",
@@ -12,33 +13,19 @@
     let app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
     const database = app.database();
 
-    // ============================================================================
-    // CƠ SỞ DỮ LIỆU GPS 15 ĐIỂM KHẢO SÁT CHUẨN (PHÂN 3 NHÓM HỆ SỐ THỰC NGHIỆM)
-    // ============================================================================
-    const SURVEY_LOCATIONS = [
-        // NHÓM 1: CÔNG NGHIỆP (alpha = 1.30 mg/L)
-        { code: "P1", name: "KCX Tân Thuận", lat: 10.748, lon: 106.726, group: "Công nghiệp", alpha: 1.30, ref: "Praveena et al. & UNEP (Tải lượng vi nhựa công nghiệp)" },
-        { code: "P2", name: "KCN Hiệp Phước", lat: 10.660, lon: 106.742, group: "Công nghiệp", alpha: 1.30, ref: "Praveena et al. & UNEP (Tải lượng vi nhựa công nghiệp)" },
-        { code: "P3", name: "KCN Tân Bình", lat: 10.801, lon: 106.639, group: "Công nghiệp", alpha: 1.30, ref: "Praveena et al. & UNEP (Tải lượng vi nhựa công nghiệp)" },
-        { code: "P4", name: "Khu Công nghệ cao", lat: 10.854, lon: 106.790, group: "Công nghiệp", alpha: 1.30, ref: "Báo cáo quan trắc nước thải TP.HCM & UNEP" },
-
-        // NHÓM 2: NƯỚC MẶT ĐÔ THỊ (alpha = 0.70 mg/L)
-        { code: "P5", name: "Hồ Bán Nguyệt", lat: 10.729, lon: 106.722, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P6", name: "Công viên Tao Đàn", lat: 10.776, lon: 106.691, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P7", name: "Công viên Gia Định", lat: 10.812, lon: 106.678, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P8", name: "Hồ Đá (ĐHQG)", lat: 10.878, lon: 106.802, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P11", name: "TP. Thủ Đức", lat: 10.849, lon: 106.772, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P13", name: "Gò Vấp", lat: 10.838, lon: 106.666, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P14", name: "Tân Phú", lat: 10.792, lon: 106.628, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-        { code: "P15", name: "Bình Thạnh", lat: 10.810, lon: 106.709, group: "Nước mặt đô thị", alpha: 0.70, ref: "Rügner et al. (2013) & Praveena et al. (2022)" },
-
-        // NHÓM 3: SINH HOẠT (alpha = 0.45 mg/L)
-        { code: "P9", name: "Bình Chánh", lat: 10.823, lon: 106.593, group: "Sinh hoạt", alpha: 0.45, ref: "Hannouche et al. (2011) & Praveena et al. (2022)" },
-        { code: "P10", name: "Quận 12", lat: 10.868, lon: 106.640, group: "Sinh hoạt", alpha: 0.45, ref: "Hannouche et al. (2011) & Praveena et al. (2022)" },
-        { code: "P12", name: "Phú Mỹ Hưng", lat: 10.728, lon: 106.715, group: "Sinh hoạt", alpha: 0.45, ref: "Hannouche et al. (2011) & Praveena et al. (2022)" }
+    // DỮ LIỆU CÁC KHU VỰC THỰC NGHIỆM ĐỂ KHỚP HỆ SỐ ALPHA
+    const REGIONAL_LOCATIONS = [
+        { code: "P1", name: "Khu chế xuất Tân Thuận (Quận 7)", lat: 10.748, lon: 106.726, group: "Khu công nghiệp", alpha: 1.30 },
+        { code: "P2", name: "Khu công nghiệp Hiệp Phước (Nhà Bè)", lat: 10.660, lon: 106.742, group: "Khu công nghiệp", alpha: 1.35 },
+        { code: "P3", name: "Khu công nghiệp Tân Bình", lat: 10.801, lon: 106.639, group: "Khu công nghiệp", alpha: 1.25 },
+        { code: "P4", name: "Hồ Bán Nguyệt (Phú Mỹ Hưng)", lat: 10.729, lon: 106.722, group: "Nước mặt đô thị", alpha: 0.70 },
+        { code: "P5", name: "Công viên Tao Đàn", lat: 10.776, lon: 106.691, group: "Nước mặt đô thị", alpha: 0.65 },
+        { code: "P6", name: "Khu dân cư Bình Chánh", lat: 10.823, lon: 106.593, group: "Nước sinh hoạt", alpha: 0.45 },
+        { code: "P7", name: "Khu dân cư Quận 12", lat: 10.868, lon: 106.640, group: "Nước sinh hoạt", alpha: 0.45 },
+        { code: "P8", name: "Khu dân cư Thủ Đức", lat: 10.849, lon: 106.772, group: "Nước sinh hoạt", alpha: 0.50 }
     ];
 
-    const M_MAX = 100.0;
+    const M_MAX = 100.0; // Sức chứa bão hòa tối đa M_max = 100 mg
     let alpha_coefficient = 0.45;
     let realtimeChart = null;
     let lastPlasticMass = 0;
@@ -46,16 +33,16 @@
     let estimatedMinutesLeft = 360;
     let isRelayOff = false;
 
-    let dataLogs = [];
-
     window.addEventListener("load", () => {
         initRealtimeChart();
         setupGPSFeature();
         setupRelayManualControl();
-        setupCSVExport();
         connectFirebaseRealtime();
     });
 
+    // =====================================================
+    // THUẬT TOÁN: TÍNH KHOẢNG CÁCH HAVERSINE
+    // =====================================================
     function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371.0;
         const dLat = (lat2 - lat1) * Math.PI / 180.0;
@@ -72,83 +59,76 @@
         if (!btnGps) return;
 
         btnGps.addEventListener("click", () => {
-            btnGps.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang quét 15 điểm khảo sát...`;
-
+            btnGps.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang tính toán vị trí...`;
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const uLat = position.coords.latitude;
                         const uLon = position.coords.longitude;
-
                         let minDist = Infinity;
-                        let nearest = SURVEY_LOCATIONS[0];
+                        let nearest = REGIONAL_LOCATIONS[0];
 
-                        SURVEY_LOCATIONS.forEach(loc => {
+                        REGIONAL_LOCATIONS.forEach(loc => {
                             let d = calculateHaversineDistance(uLat, uLon, loc.lat, loc.lon);
                             if (d < minDist) { minDist = d; nearest = loc; }
                         });
 
                         alpha_coefficient = nearest.alpha;
-                        database.ref("/alphaCoeff").set(alpha_coefficient);
-
-                        btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Quét Điểm Khảo Sát`;
-                        if (gpsInfo) gpsInfo.textContent = `Tọa độ: (${uLat.toFixed(3)}, ${uLon.toFixed(3)}) | Khớp điểm: ${nearest.code} (${minDist.toFixed(2)} km)`;
-
+                        btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Khớp Hệ Số α`;
+                        if (gpsInfo) gpsInfo.textContent = `Tọa độ: (${uLat.toFixed(3)}, ${uLon.toFixed(3)}) | Khu vực: ${nearest.code} (${minDist.toFixed(2)} km)`;
+                        
                         document.getElementById("waterSource").textContent = `${nearest.code} - ${nearest.name}`;
                         document.getElementById("alphaCoeffText").textContent = `Nhóm: ${nearest.group} | Hệ số α = ${nearest.alpha.toFixed(2)} mg/L`;
-                        document.getElementById("sourceCitation").textContent = `Nguồn: ${nearest.ref}`;
+
+                        // Đồng bộ lên Firebase
+                        database.ref("/EcoFilter/gps").set({ latitude: uLat, longitude: uLon });
+                        database.ref("/EcoFilter/currentLocation").set({
+                            pointID: nearest.code,
+                            pointName: nearest.name,
+                            alphaCoeff: nearest.alpha,
+                            sourceType: nearest.group
+                        });
                     },
                     (error) => {
                         alpha_coefficient = 0.45;
-                        btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Quét Điểm Khảo Sát`;
-                        if (gpsInfo) gpsInfo.textContent = `Lỗi GPS. Mặc định gán điểm P9 (Bình Chánh)`;
+                        btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Khớp Hệ Số α`;
+                        if (gpsInfo) gpsInfo.textContent = `Không lấy được GPS. Mặc định chọn khu vực P6 (Bình Chánh)`;
+                        document.getElementById("waterSource").textContent = "P6 - Khu dân cư Bình Chánh";
+                        document.getElementById("alphaCoeffText").textContent = "Nhóm: Nước sinh hoạt | Hệ số α = 0.45 mg/L";
+
+                        database.ref("/EcoFilter/currentLocation").set({
+                            pointID: "P6",
+                            pointName: "Khu dân cư Bình Chánh",
+                            alphaCoeff: 0.45,
+                            sourceType: "Nước sinh hoạt"
+                        });
                     }
                 );
             }
         });
     }
 
+    // =====================================================
+    // ĐIỀU KHIỂN RELAY MÁY BƠM
+    // =====================================================
     function setupRelayManualControl() {
         const btnToggle = document.getElementById("btn-toggle-relay");
         if (!btnToggle) return;
-
         btnToggle.addEventListener("click", () => {
             isRelayOff = !isRelayOff;
-            database.ref("/relayOff").set(isRelayOff);
+            database.ref("/EcoFilter/relay/relayOff").set(isRelayOff);
         });
     }
 
-    function setupCSVExport() {
-        const btnExport = document.getElementById("btn-export-csv");
-        if (!btnExport) return;
-
-        btnExport.addEventListener("click", () => {
-            if (dataLogs.length === 0) {
-                alert("Chưa có dữ liệu lịch sử để xuất báo cáo!");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,Thoi Gian,The Tich Water V (L),Vi Nhua M (mg),Bao Hoa S (%),He so Alpha (mg/L)\n";
-            dataLogs.forEach(row => {
-                csvContent += `${row.time},${row.v},${row.m},${row.sat},${row.alpha}\n`;
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `EcoFilter_Report_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
-
+    // =====================================================
+    // LẮNG NGHE REALTIME FIREBASE
+    // =====================================================
     function connectFirebaseRealtime() {
-        database.ref("/relayOff").on("value", (snapshot) => {
+        // Lắng nghe nút ngắt Relay
+        database.ref("/EcoFilter/relay/relayOff").on("value", (snapshot) => {
             isRelayOff = snapshot.val() === true;
             const statusText = document.getElementById("relay-status-text");
             const btnToggle = document.getElementById("btn-toggle-relay");
-
             if (isRelayOff) {
                 if (statusText) { statusText.textContent = "ĐÃ NGẮT (DỪNG BƠM)"; statusText.style.color = "#dc2626"; }
                 if (btnToggle) { btnToggle.className = "btn-action btn-success"; btnToggle.innerHTML = `<i class="fas fa-play"></i> Bật Lại Máy Bơm`; }
@@ -158,7 +138,8 @@
             }
         });
 
-        database.ref("/").on("value", (snapshot) => {
+        // Lắng nghe dữ liệu cảm biến
+        database.ref("/EcoFilter/sensorData").on("value", (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
@@ -169,14 +150,16 @@
             let satPercent = (M / M_MAX) * 100.0;
             if (satPercent > 100) satPercent = 100;
 
+            if (satPercent >= 100.0 && !isRelayOff) {
+                database.ref("/EcoFilter/relay/relayOff").set(true);
+            }
+
             const now = Date.now();
             const dtMinutes = (now - lastTimestamp) / 60000.0;
-
             if (dtMinutes > 0 && M > lastPlasticMass && lastPlasticMass > 0) {
                 let dM_dt = (M - lastPlasticMass) / dtMinutes;
                 let f_turb = 3.3 / (V_adc + 0.1);
                 let adjustedRate = dM_dt * f_turb;
-
                 if (adjustedRate > 0) {
                     estimatedMinutesLeft = (M_MAX - M) / adjustedRate;
                 }
@@ -186,9 +169,6 @@
 
             lastPlasticMass = M;
             lastTimestamp = now;
-
-            let timeStr = new Date().toLocaleTimeString();
-            dataLogs.push({ time: timeStr, v: V.toFixed(2), m: M.toFixed(2), sat: satPercent.toFixed(1), alpha: alpha_coefficient });
 
             updateUI(V, M, satPercent, estimatedMinutesLeft);
         });
@@ -202,34 +182,16 @@
 
         const satBar = document.getElementById("progress-fill");
         const satIcon = document.getElementById("sat-icon");
-        const alertBox = document.getElementById("alert-box");
-
         if (satBar) {
             satBar.style.width = `${satPercent.toFixed(0)}%`;
-            if (satPercent >= 80) {
-                satBar.style.backgroundColor = "#ef4444";
-                if (satIcon) satIcon.textContent = "🔴";
-                if (alertBox) {
-                    alertBox.className = "alert-banner alert-danger";
-                    alertBox.innerHTML = `⚠️ CẢNH BÁO NGUY HIỂM: Màng lọc đã bão hòa ${satPercent.toFixed(0)}%! Cần thay màng lọc ngay.`;
-                }
-            } else if (satPercent >= 50) {
-                satBar.style.backgroundColor = "#eab308";
-                if (satIcon) satIcon.textContent = "🟡";
-                if (alertBox) {
-                    alertBox.className = "alert-banner alert-warning";
-                    alertBox.innerHTML = `⚡ KHUYẾN CÁO: Màng lọc tích tụ vi nhựa ${satPercent.toFixed(0)}%. Chuẩn bị màng thay thế.`;
-                }
-            } else {
-                satBar.style.backgroundColor = "#22c55e";
-                if (satIcon) satIcon.textContent = "🟢";
-                if (alertBox) alertBox.className = "alert-banner";
-            }
+            if (satPercent >= 80) { satBar.style.backgroundColor = "#ef4444"; if (satIcon) satIcon.textContent = "🔴"; }
+            else if (satPercent >= 50) { satBar.style.backgroundColor = "#eab308"; if (satIcon) satIcon.textContent = "🟡"; }
+            else { satBar.style.backgroundColor = "#22c55e"; if (satIcon) satIcon.textContent = "🟢"; }
         }
 
         const lifeEl = document.getElementById("filterLifeElement");
         if (lifeEl) {
-            if (satPercent >= 100) { lifeEl.textContent = "CẦN THAY MÀNG LỌC - Máy bơm đã tự động ngắt!"; }
+            if (satPercent >= 100) { lifeEl.textContent = "CẢNH BÁO: Màng bão hòa - Bơm đã tự động ngắt!"; }
             else {
                 let h = Math.floor(minsLeft / 60);
                 let m = Math.round(minsLeft % 60);
@@ -275,6 +237,4 @@
         });
     }
 })();
-
-
 
