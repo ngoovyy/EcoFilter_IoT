@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Giám Sát Màng Lọc & Tải Lượng Vi Nhựa</title>
+    <title>Dashboard Giám Sát Màng Lọc EcoFilter</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -31,18 +31,20 @@
         .progress-bar { background: #22c55e; height: 100%; width: 0%; transition: width 0.4s ease, background-color 0.4s ease; }
         .btn-action { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
         .btn-action:hover { opacity: 0.9; }
-        .btn-danger { background: #ef4444; }
-        .btn-success { background: #16a34a; }
         .chart-box { height: 260px; margin-top: 10px; }
         .algorithm-tag { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; color: #334155; margin: 3px; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-warning { background: #fef9c3; color: #a16207; }
+        .badge-danger { background: #fee2e2; color: #b91c1c; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1><i class="fas fa-microchip"></i> HỆ THỐNG ƯỚC LƯỢNG TẢI LƯỢNG VI NHỰA VÀ GIÁM SÁT MÀNG LỌC</h1>
-        <p>Giám sát thời gian thực &bull; Cập nhật lần cuối: <strong id="last-update-time">--:--:--</strong></p>
+        <h1><i class="fas fa-microchip"></i> ECOFILTER — GIÁM SÁT MÀNG LỌC VÀ TẢI LƯỢNG VI NHỰA</h1>
+        <p>Cấp nước thủ công bằng van &bull; Cập nhật lần cuối: <strong id="last-update-time">--:--:--</strong></p>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
@@ -53,48 +55,57 @@
         <button id="btn-export-csv" class="btn-action" style="background: #475569;"><i class="fas fa-file-csv"></i> Xuất Dữ Liệu CSV</button>
     </div>
 
+    <!-- HÀNG 1: VỊ TRÍ, LƯU LƯỢNG NƯỚC, ĐỘ ĐỤC -->
     <div class="grid-3">
         <div class="card">
             <div class="card-title"><i class="fas fa-map-marker-alt"></i> Khu vực nguồn nước & Hệ số α</div>
-            <div id="waterSource" class="value" style="font-size: 1.2rem; color: #0f172a;">P6 - Khu dân cư Bình Chánh</div>
-            <div id="alphaCoeffText" class="sub-text">Nhóm: Nước thải sinh hoạt | Hệ số α = 0.45 mg/L (Tự động cập nhật theo GPS)</div>
+            <div id="waterSource" class="value" style="font-size: 1.2rem; color: #0f172a;">Đang tải vị trí...</div>
+            <div id="alphaCoeffText" class="sub-text">Đang tải hệ số...</div>
         </div>
 
         <div class="card">
-            <div class="card-title"><i class="fas fa-filter"></i> Lượng nước & Vi nhựa tích lũy</div>
+            <div class="card-title"><i class="fas fa-faucet"></i> Dòng chảy & Thể tích nước</div>
+            <div>Lưu lượng: <strong id="flow-rate" class="value" style="font-size: 1.3rem;">0.00</strong> L/min</div>
             <div>Thể tích: <strong id="water-volume" class="value" style="font-size: 1.3rem;">0.00</strong> L</div>
-            <div>Vi nhựa ($M$): <strong id="plastic-mass" class="value" style="font-size: 1.3rem; color: #ef4444;">0.00</strong> mg</div>
         </div>
 
         <div class="card">
-            <div class="card-title"><i class="fas fa-eye"></i> Độ đục nước sau lọc</div>
+            <div class="card-title"><i class="fas fa-eye"></i> Độ đục & TSS ước tính</div>
             <div id="turbidity-val" class="value" style="font-size: 1.2rem; color: #0f172a;">0.0 NTU</div>
-            <div id="turbidity-voltage" class="sub-text">Tín hiệu điện áp: 3.30 V (Đã lọc nhiễu Moving Average)</div>
+            <div id="turbidity-voltage" class="sub-text">Điện áp: 3.30 V</div>
+            <div id="tss-val" class="sub-text" style="font-weight: 600; color: #0284c7;">TSS ước tính: 0.00 mg/L (Hệ số 0.3)</div>
         </div>
     </div>
 
+    <!-- HÀNG 2: TẢI LƯỢNG M, BÃO HÒA, TRẠNG THÁI BẢO TRÌ -->
     <div class="grid-3">
+        <div class="card">
+            <div class="card-title"><i class="fas fa-filter"></i> Vi nhựa tích lũy ($M$)</div>
+            <div>Vi nhựa ($M$): <strong id="plastic-mass" class="value" style="font-size: 1.5rem; color: #ef4444;">0.00</strong> mg</div>
+            <div class="sub-text">Ngưỡng bão hòa tối đa: $M_{max} = 100.0$ mg</div>
+        </div>
+
         <div class="card">
             <div class="card-title"><i class="fas fa-tachometer-alt"></i> Mức độ bão hòa màng lọc <span id="sat-icon">🟢</span></div>
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
                 <span class="value"><span id="progress-percent">0</span>%</span>
-                <span class="sub-text">Còn lại: <strong id="filter-life">100</strong>% dung lượng</span>
+                <span class="sub-text">Dung lượng màng còn lại: <strong id="filter-life">100</strong>%</span>
             </div>
             <div class="progress-container">
                 <div id="progress-fill" class="progress-bar"></div>
             </div>
-            <div id="filterLifeElement" class="sub-text" style="margin-top: 8px; font-weight: 600;">Bảo trì dự kiến: -- giờ -- phút</div>
         </div>
 
         <div class="card">
-            <div class="card-title"><i class="fas fa-power-off"></i> Trạng thái Rơ-le Máy Bơm (Fail-Safe)</div>
-            <div id="relay-status-text" class="value" style="font-size: 1.1rem; color: #16a34a;">ĐANG BẬT (HOẠT ĐỘNG)</div>
-            <div style="margin-top: 10px;">
-                <button id="btn-toggle-relay" class="btn-action btn-danger"><i class="fas fa-power-off"></i> Ngắt Máy Bơm Khẩn Cấp</button>
+            <div class="card-title"><i class="fas fa-tools"></i> Dự báo bảo trì (Predictive Maintenance)</div>
+            <div style="margin-bottom: 8px;">
+                Trạng thái: <span id="maintenance-status-tag" class="status-badge badge-success">HOẠT ĐỘNG BÌNH THƯỜNG</span>
             </div>
+            <div id="filterLifeElement" class="sub-text" style="font-weight: 600;">Thời gian còn lại: -- giờ -- phút</div>
         </div>
     </div>
 
+    <!-- BIỂU ĐỒ -->
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-title"><i class="fas fa-chart-line"></i> Biểu đồ diễn biến Thể tích nước (V) & Tải lượng Vi nhựa (M)</div>
         <div class="chart-box">
@@ -102,16 +113,16 @@
         </div>
     </div>
 
+    <!-- THUẬT TOÁN -->
     <div class="card" style="background: #f8fafc;">
-        <div class="card-title"><i class="fas fa-cogs"></i> Thuật toán cốt lõi đang vận hành trên hệ thống</div>
+        <div class="card-title"><i class="fas fa-cogs"></i> Mô hình vận hành trên hệ thống EcoFilter</div>
         <div style="margin-top: 8px;">
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Moving Average Filter</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Haversine GPS Matrix</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Flow Integration</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Mass Estimation Model (M = α × V)</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Dynamic Saturation Prediction (dM/dt)</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Predictive Maintenance Logging</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Fail-Safe Hardware Relay Cut (M ≥ Mmax)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Manual Valve Water Supply</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Moving Average 15 samples (Turbidity)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Voltage -> NTU -> TSS Model (0.3)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Haversine Dynamic Survey Points</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Mass Accumulation ($M = \alpha \times V$)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Predictive Maintenance ($dM/dt$)</span>
         </div>
     </div>
 </div>
