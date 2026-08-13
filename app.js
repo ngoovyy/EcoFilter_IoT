@@ -17,7 +17,7 @@
 
     let realtimeChart = null;
     let dataLogsHistory = [];
-    let surveyPointsData = {}; // Tải trực tiếp từ Firebase
+    let surveyPointsData = {};
 
     window.addEventListener("load", () => {
         initRealtimeChart();
@@ -54,7 +54,6 @@
                         let nearestKey = "P6";
                         let nearestObj = { name: "Khu dân cư Bình Chánh", group: "Nước sinh hoạt", alpha: 0.45 };
 
-                        // Sử dụng surveyPoints tải từ Firebase
                         if (Object.keys(surveyPointsData).length > 0) {
                             for (const key in surveyPointsData) {
                                 const pt = surveyPointsData[key];
@@ -73,7 +72,6 @@
                             gpsInfo.textContent = `Tọa độ: (${uLat.toFixed(3)}, ${uLon.toFixed(3)}) | Điểm gần nhất: ${nearestKey} (${minDist.toFixed(2)} km)`;
                         }
 
-                        // Cập nhật tọa độ & vị trí lên Firebase
                         database.ref("/EcoFilter/gps").update({ 
                             latitude: uLat, 
                             longitude: uLon,
@@ -113,6 +111,19 @@
         if (alphaCoeffTextEl) alphaCoeffTextEl.textContent = `Nhóm: ${group} | Hệ số α = ${parseFloat(alpha).toFixed(2)} mg/L`;
     }
 
+    // Phân loại trạng thái nước theo NTU tương đối
+    function getWaterStatus(ntu) {
+        if (ntu < 1000) {
+            return "🟢 Nước trong / tương đối trong";
+        } else if (ntu < 2000) {
+            return "🟡 Nước đục nhẹ";
+        } else if (ntu < 3000) {
+            return "🟠 Nước đục";
+        } else {
+            return "🔴 Nước rất đục";
+        }
+    }
+
     function setupCSVExport() {
         const btnExport = document.getElementById("btn-export-csv");
         if (!btnExport) return;
@@ -121,9 +132,10 @@
                 alert("Chưa có dữ liệu cảm biến để xuất CSV!");
                 return;
             }
-            let csvContent = "data:text/csv;charset=utf-8,Thoi Gian,Luu Luong (L/min),The Tich (L),Vi Nhua (mg),Dien Ap (V),NTU,TSS (mg/L),Bao Hoa (%)\n";
+            // Đã xóa cột TSS khỏi CSV
+            let csvContent = "data:text/csv;charset=utf-8,Thoi Gian,Luu Luong (L/min),The Tich (L),Vi Nhua (mg),Dien Ap (V),NTU Tuong Doi,Bao Hoa (%)\n";
             dataLogsHistory.forEach(row => {
-                csvContent += `${row.time},${row.flowRate},${row.waterVolume},${row.currentM},${row.voltage},${row.ntu},${row.tss},${row.saturation}\n`;
+                csvContent += `${row.time},${row.flowRate},${row.waterVolume},${row.currentM},${row.voltage},${row.ntu},${row.saturation}\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
@@ -137,15 +149,11 @@
     }
 
     function connectFirebaseRealtime() {
-        // 1. Lấy danh sách Survey Points động từ Firebase
         database.ref("/EcoFilter/surveyPoints").on("value", (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                surveyPointsData = data;
-            }
+            if (data) surveyPointsData = data;
         });
 
-        // 2. Theo dõi thông tin vị trí hiện tại
         database.ref("/EcoFilter/currentLocation").on("value", (snapshot) => {
             const locData = snapshot.val();
             if (locData) {
@@ -158,7 +166,6 @@
             }
         });
 
-        // 3. Đọc dữ liệu cảm biến chuẩn từ Firebase (ESP32 đã tính toán)
         database.ref("/EcoFilter/sensorData").on("value", (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
@@ -167,7 +174,6 @@
             let V = data.waterVolume !== undefined ? parseFloat(data.waterVolume) : 0;
             let V_adc = data.turbidityVoltage !== undefined ? parseFloat(data.turbidityVoltage) : 3.3;
             let ntuVal = data.turbidityNTU !== undefined ? parseFloat(data.turbidityNTU) : 0;
-            let tssVal = data.estimatedTSS !== undefined ? parseFloat(data.estimatedTSS) : 0;
             let M = data.currentM !== undefined ? parseFloat(data.currentM) : 0;
             let satPercent = data.saturation !== undefined ? parseFloat(data.saturation) : 0;
             let filterLife = data.filterLife !== undefined ? parseFloat(data.filterLife) : 100;
@@ -177,24 +183,23 @@
             const now = data.timestamp ? data.timestamp : Date.now();
             const timeStr = new Date(now).toLocaleTimeString();
 
-            // Lưu dữ liệu vào mảng CSV
+            // Lưu dữ liệu vào mảng xuất CSV
             dataLogsHistory.push({
                 time: timeStr,
                 flowRate: flowRate.toFixed(2),
                 waterVolume: V.toFixed(2),
                 currentM: M.toFixed(2),
                 voltage: V_adc.toFixed(2),
-                ntu: ntuVal.toFixed(1),
-                tss: tssVal.toFixed(2),
+                ntu: Math.round(ntuVal),
                 saturation: satPercent.toFixed(1)
             });
             if(dataLogsHistory.length > 500) dataLogsHistory.shift(); 
 
-            updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, tssVal, estTime, status, timeStr);
+            updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, estTime, status, timeStr);
         });
     }
 
-    function updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, tssVal, estTime, status, timeStr) {
+    function updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, estTime, status, timeStr) {
         document.getElementById("flow-rate").textContent = flowRate.toFixed(2);
         document.getElementById("water-volume").textContent = V.toFixed(2);
         document.getElementById("plastic-mass").textContent = M.toFixed(2);
@@ -204,13 +209,14 @@
         const lastUpdateEl = document.getElementById("last-update-time");
         if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
 
+        // Cập nhật card Độ Đục & Trạng Thái Nước
         const turbidityValEl = document.getElementById("turbidity-val");
         const turbidityVoltEl = document.getElementById("turbidity-voltage");
-        const tssValEl = document.getElementById("tss-val");
+        const waterStatusEl = document.getElementById("water-status");
 
-        if (turbidityValEl) turbidityValEl.textContent = `${ntuVal.toFixed(1)} NTU`;
+        if (turbidityValEl) turbidityValEl.textContent = `${Math.round(ntuVal)} NTU (tương đối)`;
         if (turbidityVoltEl) turbidityVoltEl.textContent = `Điện áp: ${V_adc.toFixed(2)} V`;
-        if (tssValEl) tssValEl.textContent = `TSS ước tính: ${tssVal.toFixed(2)} mg/L (Hệ số 0.3)`;
+        if (waterStatusEl) waterStatusEl.textContent = getWaterStatus(ntuVal);
 
         // Progress Bar bão hòa
         const satBar = document.getElementById("progress-fill");
@@ -254,10 +260,10 @@
             }
         }
 
-        // Cập nhật biểu đồ
+        // Cập nhật biểu đồ (NTU Tương đối & Vi nhựa M theo Thời gian)
         if (realtimeChart) {
             realtimeChart.data.labels.push(timeStr);
-            realtimeChart.data.datasets[0].data.push(V);
+            realtimeChart.data.datasets[0].data.push(Math.round(ntuVal));
             realtimeChart.data.datasets[1].data.push(M);
             if (realtimeChart.data.labels.length > 10) {
                 realtimeChart.data.labels.shift();
@@ -276,8 +282,24 @@
             data: {
                 labels: [],
                 datasets: [
-                    { label: "Thể tích V (L)", data: [], borderColor: "#0284c7", borderWidth: 2, pointRadius: 2, yAxisID: "y-water" },
-                    { label: "Vi nhựa M (mg)", data: [], borderColor: "#ef4444", borderWidth: 2, pointRadius: 2, yAxisID: "y-plastic" }
+                    { 
+                        label: "Độ đục tương đối (NTU)", 
+                        data: [], 
+                        borderColor: "#0284c7", 
+                        backgroundColor: "rgba(2, 132, 199, 0.1)",
+                        borderWidth: 2, 
+                        pointRadius: 3, 
+                        yAxisID: "y-ntu" 
+                    },
+                    { 
+                        label: "Khối lượng vi nhựa ước tính (mg)", 
+                        data: [], 
+                        borderColor: "#ef4444", 
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        borderWidth: 2, 
+                        pointRadius: 3, 
+                        yAxisID: "y-plastic" 
+                    }
                 ]
             },
             options: {
@@ -285,13 +307,21 @@
                 maintainAspectRatio: false,
                 scales: {
                     x: { ticks: { font: { size: 9 } } },
-                    "y-water": { type: "linear", position: "left", ticks: { font: { size: 9 }, color: "#0284c7" } },
-                    "y-plastic": { type: "linear", position: "right", ticks: { font: { size: 9 }, color: "#ef4444" }, grid: { display: false } }
+                    "y-ntu": { 
+                        type: "linear", 
+                        position: "left", 
+                        title: { display: true, text: "NTU Tương đối", font: { size: 10 } },
+                        ticks: { font: { size: 9 }, color: "#0284c7" } 
+                    },
+                    "y-plastic": { 
+                        type: "linear", 
+                        position: "right", 
+                        title: { display: true, text: "Vi nhựa M (mg)", font: { size: 10 } },
+                        ticks: { font: { size: 9 }, color: "#ef4444" }, 
+                        grid: { display: false } 
+                    }
                 }
             }
         });
     }
 })();
-
-
-

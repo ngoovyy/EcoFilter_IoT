@@ -26,7 +26,7 @@
         .card { background: var(--card-bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .card-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
         .value { font-size: 1.6rem; font-weight: bold; color: var(--primary); }
-        .sub-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
+        .sub-text { font-size: 0.85rem; color: var(--text-muted); margin-top: 5px; }
         .progress-container { background: #e2e8f0; border-radius: 8px; height: 12px; width: 100%; margin-top: 10px; overflow: hidden; }
         .progress-bar { background: #22c55e; height: 100%; width: 0%; transition: width 0.4s ease, background-color 0.4s ease; }
         .btn-action { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
@@ -37,6 +37,9 @@
         .badge-success { background: #dcfce7; color: #15803d; }
         .badge-warning { background: #fef9c3; color: #a16207; }
         .badge-danger { background: #fee2e2; color: #b91c1c; }
+        .ref-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.85rem; }
+        .ref-table th, .ref-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .ref-table th { background: #f1f5f9; color: var(--text-muted); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -69,20 +72,21 @@
             <div>Thể tích: <strong id="water-volume" class="value" style="font-size: 1.3rem;">0.00</strong> L</div>
         </div>
 
+        <!-- CARD ĐỘ ĐỤC MỚI -->
         <div class="card">
-            <div class="card-title"><i class="fas fa-eye"></i> Độ đục & TSS ước tính</div>
-            <div id="turbidity-val" class="value" style="font-size: 1.2rem; color: #0f172a;">0.0 NTU</div>
+            <div class="card-title"><i class="fas fa-eye"></i> ĐỘ ĐỤC</div>
+            <div id="turbidity-val" class="value" style="font-size: 1.2rem; color: #0f172a;">0 NTU (tương đối)</div>
             <div id="turbidity-voltage" class="sub-text">Điện áp: 3.30 V</div>
-            <div id="tss-val" class="sub-text" style="font-weight: 600; color: #0284c7;">TSS ước tính: 0.00 mg/L (Hệ số 0.3)</div>
+            <div id="water-status" class="sub-text" style="font-weight: 600; font-size: 0.95rem; margin-top: 6px;">🟢 Nước trong / tương đối trong</div>
         </div>
     </div>
 
     <!-- HÀNG 2: TẢI LƯỢNG M, BÃO HÒA, TRẠNG THÁI BẢO TRÌ -->
     <div class="grid-3">
         <div class="card">
-            <div class="card-title"><i class="fas fa-filter"></i> Vi nhựa tích lũy ($M$)</div>
-            <div>Vi nhựa ($M$): <strong id="plastic-mass" class="value" style="font-size: 1.5rem; color: #ef4444;">0.00</strong> mg</div>
-            <div class="sub-text">Ngưỡng bão hòa tối đa: $M_{max} = 100.0$ mg</div>
+            <div class="card-title"><i class="fas fa-filter"></i> Vi nhựa tích lũy (M)</div>
+            <div>Vi nhựa (M): <strong id="plastic-mass" class="value" style="font-size: 1.5rem; color: #ef4444;">0.00</strong> mg</div>
+            <div class="sub-text">Ngưỡng bão hòa tối đa: M<sub>max</sub> = 100.0 mg</div>
         </div>
 
         <div class="card">
@@ -105,24 +109,55 @@
         </div>
     </div>
 
-    <!-- BIỂU ĐỒ -->
+    <!-- BẢNG THAM CHIẾU ĐỘ ĐỤC TƯƠNG ĐỐI -->
     <div class="card" style="margin-bottom: 20px;">
-        <div class="card-title"><i class="fas fa-chart-line"></i> Biểu đồ diễn biến Thể tích nước (V) & Tải lượng Vi nhựa (M)</div>
+        <div class="card-title"><i class="fas fa-table"></i> Bảng Tham Chiếu Độ Đục Tương Đối</div>
+        <table class="ref-table">
+            <thead>
+                <tr>
+                    <th>NTU tương đối</th>
+                    <th>Trạng thái nước</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>0 – &lt;1000</td>
+                    <td>🟢 Nước trong / tương đối trong</td>
+                </tr>
+                <tr>
+                    <td>1000 – &lt;2000</td>
+                    <td>🟡 Nước đục nhẹ</td>
+                </tr>
+                <tr>
+                    <td>2000 – &lt;3000</td>
+                    <td>🟠 Nước đục</td>
+                </tr>
+                <tr>
+                    <td>&ge;3000</td>
+                    <td>🔴 Nước rất đục</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- BIỂU ĐỒ CẢI TIẾN -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-title"><i class="fas fa-chart-line"></i> Diễn biến độ đục tương đối và khối lượng vi nhựa ước tính theo thời gian</div>
         <div class="chart-box">
             <canvas id="realtimeChart"></canvas>
         </div>
     </div>
 
-    <!-- THUẬT TOÁN -->
+    <!-- MÔ HÌNH VẬN HÀNH -->
     <div class="card" style="background: #f8fafc;">
         <div class="card-title"><i class="fas fa-cogs"></i> Mô hình vận hành trên hệ thống EcoFilter</div>
         <div style="margin-top: 8px;">
             <span class="algorithm-tag"><i class="fas fa-check"></i> Manual Valve Water Supply</span>
             <span class="algorithm-tag"><i class="fas fa-check"></i> Moving Average 15 samples (Turbidity)</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Voltage -> NTU -> TSS Model (0.3)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Piecewise Linear Voltage -> Relative NTU</span>
             <span class="algorithm-tag"><i class="fas fa-check"></i> Haversine Dynamic Survey Points</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Mass Accumulation ($M = \alpha \times V$)</span>
-            <span class="algorithm-tag"><i class="fas fa-check"></i> Predictive Maintenance ($dM/dt$)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Mass Accumulation (M = α × V)</span>
+            <span class="algorithm-tag"><i class="fas fa-check"></i> Predictive Maintenance (dM/dt)</span>
         </div>
     </div>
 </div>
@@ -130,7 +165,6 @@
 <script src="app.js"></script>
 </body>
 </html>
-
 
 
 
