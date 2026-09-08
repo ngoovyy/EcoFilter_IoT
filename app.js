@@ -11,21 +11,17 @@
         messagingSenderId: "611838926722",
         appId: "1:611838926722:web:00cfe4ee3ba927c1d7799b"
     };
-
     let app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
     const database = app.database();
-
     let realtimeChart = null;
     let dataLogsHistory = [];
     let surveyPointsData = {};
-
     window.addEventListener("load", () => {
         initRealtimeChart();
         setupGPSFeature();
         setupCSVExport();
         connectFirebaseRealtime();
     });
-
     function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
         const R = 6371.0;
         const dLat = (lat2 - lat1) * Math.PI / 180.0;
@@ -35,15 +31,12 @@
                   Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
         return R * (2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a)));
     }
-
     function setupGPSFeature() {
         const btnGps = document.getElementById("btn-gps");
         const gpsInfo = document.getElementById("gps-info");
         if (!btnGps) return;
-
         btnGps.addEventListener("click", () => {
             btnGps.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang tính toán vị trí...`;
-
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
@@ -53,7 +46,6 @@
                         let minDist = Infinity;
                         let nearestKey = "P6";
                         let nearestObj = { name: "Khu dân cư Bình Chánh", group: "Nước sinh hoạt", alpha: 0.45 };
-
                         if (Object.keys(surveyPointsData).length > 0) {
                             for (const key in surveyPointsData) {
                                 const pt = surveyPointsData[key];
@@ -65,19 +57,15 @@
                                 }
                             }
                         }
-
                         btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Khớp Hệ Số α`;
-
                         if (gpsInfo) {
                             gpsInfo.textContent = `Tọa độ: (${uLat.toFixed(3)}, ${uLon.toFixed(3)}) | Điểm gần nhất: ${nearestKey} (${minDist.toFixed(2)} km)`;
                         }
-
                         database.ref("/EcoFilter/gps").update({ 
                             latitude: uLat, 
                             longitude: uLon,
                             lastUpdated: firebase.database.ServerValue.TIMESTAMP
                         });
-
                         database.ref("/EcoFilter/currentLocation").update({
                             pointID: nearestKey,
                             pointName: nearestObj.name,
@@ -94,36 +82,30 @@
             }
         });
     }
-
     function handleGPSFallback(message) {
         const btnGps = document.getElementById("btn-gps");
         const gpsInfo = document.getElementById("gps-info");
-
         if (btnGps) btnGps.innerHTML = `<i class="fas fa-location-crosshairs"></i> Định vị GPS & Khớp Hệ Số α`;
         if (gpsInfo) gpsInfo.textContent = `${message}`;
     }
-
     function updateLocationUI(code, name, group, alpha) {
         const waterSourceEl = document.getElementById("waterSource");
         const alphaCoeffTextEl = document.getElementById("alphaCoeffText");
-
         if (waterSourceEl) waterSourceEl.textContent = `${code} - ${name}`;
         if (alphaCoeffTextEl) alphaCoeffTextEl.textContent = `Nhóm: ${group} | Hệ số α = ${parseFloat(alpha).toFixed(2)} mg/L`;
     }
-
     // Phân loại trạng thái nước theo NTU tương đối
     function getWaterStatus(ntu) {
-        if (ntu < 1000) {
-            return "🟢 Nước trong / tương đối trong";
-        } else if (ntu < 2000) {
-            return "🟡 Nước đục nhẹ";
-        } else if (ntu < 3000) {
+        if (ntu < 250) {
+            return "🟢 Nước tương đối trong";
+        } else if (ntu < 500) {
+            return "🟡 Độ đục trung bình";
+        } else if (ntu < 750) {
             return "🟠 Nước đục";
         } else {
             return "🔴 Nước rất đục";
         }
     }
-
     function setupCSVExport() {
         const btnExport = document.getElementById("btn-export-csv");
         if (!btnExport) return;
@@ -132,12 +114,10 @@
                 alert("Chưa có dữ liệu cảm biến để xuất CSV!");
                 return;
             }
-            // Đã xóa cột TSS khỏi CSV
-            let csvContent = "data:text/csv;charset=utf-8,Thoi Gian,Luu Luong (L/min),The Tich (L),Vi Nhua (mg),Dien Ap (V),NTU Tuong Doi,Bao Hoa (%)\n";
+            let csvContent = "data:text/csv;charset=utf-8,Thoi Gian,Luu Luong (L/min),The Tich (L),Vi Nhua (mg),NTU Tuong Doi,Bao Hoa (%)\n";
             dataLogsHistory.forEach(row => {
-                csvContent += `${row.time},${row.flowRate},${row.waterVolume},${row.currentM},${row.voltage},${row.ntu},${row.saturation}\n`;
+                csvContent += `${row.time},${row.flowRate},${row.waterVolume},${row.currentM},${row.ntu},${row.saturation}\n`;
             });
-
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
@@ -147,13 +127,11 @@
             document.body.removeChild(link);
         });
     }
-
     function connectFirebaseRealtime() {
         database.ref("/EcoFilter/surveyPoints").on("value", (snapshot) => {
             const data = snapshot.val();
             if (data) surveyPointsData = data;
         });
-
         database.ref("/EcoFilter/currentLocation").on("value", (snapshot) => {
             const locData = snapshot.val();
             if (locData) {
@@ -165,11 +143,9 @@
                 );
             }
         });
-
         database.ref("/EcoFilter/sensorData").on("value", (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
-
             let flowRate = data.flowRate !== undefined ? parseFloat(data.flowRate) : 0;
             let V = data.waterVolume !== undefined ? parseFloat(data.waterVolume) : 0;
             let V_adc = data.turbidityVoltage !== undefined ? parseFloat(data.turbidityVoltage) : 3.3;
@@ -179,10 +155,8 @@
             let filterLife = data.filterLife !== undefined ? parseFloat(data.filterLife) : 100;
             let estTime = data.estimatedRemainingTime !== undefined ? parseFloat(data.estimatedRemainingTime) : -1;
             let status = data.maintenanceStatus || "NORMAL";
-
             const now = data.timestamp ? data.timestamp : Date.now();
             const timeStr = new Date(now).toLocaleTimeString();
-
             // Lưu dữ liệu vào mảng xuất CSV
             dataLogsHistory.push({
                 time: timeStr,
@@ -194,30 +168,22 @@
                 saturation: satPercent.toFixed(1)
             });
             if(dataLogsHistory.length > 500) dataLogsHistory.shift(); 
-
             updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, estTime, status, timeStr);
         });
     }
-
     function updateUI(flowRate, V, M, satPercent, filterLife, V_adc, ntuVal, estTime, status, timeStr) {
         document.getElementById("flow-rate").textContent = flowRate.toFixed(2);
         document.getElementById("water-volume").textContent = V.toFixed(2);
         document.getElementById("plastic-mass").textContent = M.toFixed(2);
         document.getElementById("progress-percent").textContent = satPercent.toFixed(0);
         document.getElementById("filter-life").textContent = filterLife.toFixed(0);
-
         const lastUpdateEl = document.getElementById("last-update-time");
         if (lastUpdateEl) lastUpdateEl.textContent = timeStr;
-
         // Cập nhật card Độ Đục & Trạng Thái Nước
         const turbidityValEl = document.getElementById("turbidity-val");
-        const turbidityVoltEl = document.getElementById("turbidity-voltage");
         const waterStatusEl = document.getElementById("water-status");
-
         if (turbidityValEl) turbidityValEl.textContent = `${Math.round(ntuVal)} NTU (tương đối)`;
-        if (turbidityVoltEl) turbidityVoltEl.textContent = `Điện áp: ${V_adc.toFixed(2)} V`;
         if (waterStatusEl) waterStatusEl.textContent = getWaterStatus(ntuVal);
-
         // Progress Bar bão hòa
         const satBar = document.getElementById("progress-fill");
         const satIcon = document.getElementById("sat-icon");
@@ -227,11 +193,9 @@
             else if (satPercent >= 50) { satBar.style.backgroundColor = "#eab308"; if (satIcon) satIcon.textContent = "🟡"; }
             else { satBar.style.backgroundColor = "#22c55e"; if (satIcon) satIcon.textContent = "🟢"; }
         }
-
         // Bảo trì dự báo
         const lifeEl = document.getElementById("filterLifeElement");
         const statusTagEl = document.getElementById("maintenance-status-tag");
-
         if (statusTagEl) {
             if (status === "REPLACE_NOW") {
                 statusTagEl.className = "status-badge badge-danger";
@@ -244,7 +208,6 @@
                 statusTagEl.textContent = "HOẠT ĐỘNG BÌNH THƯỜNG";
             }
         }
-
         if (lifeEl) {
             if (status === "REPLACE_NOW") {
                 lifeEl.textContent = "⚠️ Màng đã bão hòa hoàn toàn! Hãy thay màng lọc mới.";
@@ -259,7 +222,6 @@
                 lifeEl.style.color = "#1e293b";
             }
         }
-
         // Cập nhật biểu đồ (NTU Tương đối & Vi nhựa M theo Thời gian)
         if (realtimeChart) {
             realtimeChart.data.labels.push(timeStr);
@@ -273,7 +235,6 @@
             realtimeChart.update();
         }
     }
-
     function initRealtimeChart() {
         const ctx = document.getElementById("realtimeChart");
         if (!ctx) return;

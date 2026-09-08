@@ -72,11 +72,10 @@
             <div>Thể tích: <strong id="water-volume" class="value" style="font-size: 1.3rem;">0.00</strong> L</div>
         </div>
 
-        <!-- CARD ĐỘ ĐỤC MỚI -->
+        <!-- CARD ĐỘ ĐỤC -->
         <div class="card">
             <div class="card-title"><i class="fas fa-eye"></i> ĐỘ ĐỤC</div>
             <div id="turbidity-val" class="value" style="font-size: 1.2rem; color: #0f172a;">0 NTU (tương đối)</div>
-            <div id="turbidity-voltage" class="sub-text">Điện áp: 3.30 V</div>
             <div id="water-status" class="sub-text" style="font-weight: 600; font-size: 0.95rem; margin-top: 6px;">🟢 Nước trong / tương đối trong</div>
         </div>
     </div>
@@ -121,19 +120,19 @@
             </thead>
             <tbody>
                 <tr>
-                    <td>0 – &lt;1000</td>
-                    <td>🟢 Nước trong / tương đối trong</td>
+                    <td>0 – &lt;250</td>
+                    <td>🟢 Nước tương đối trong</td>
                 </tr>
                 <tr>
-                    <td>1000 – &lt;2000</td>
-                    <td>🟡 Nước đục nhẹ</td>
+                    <td>250 – &lt;500</td>
+                    <td>🟡 Độ đục trung bình</td>
                 </tr>
                 <tr>
-                    <td>2000 – &lt;3000</td>
+                    <td>500 – &lt;750</td>
                     <td>🟠 Nước đục</td>
                 </tr>
                 <tr>
-                    <td>&ge;3000</td>
+                    <td>750 – 1000</td>
                     <td>🔴 Nước rất đục</td>
                 </tr>
             </tbody>
@@ -162,7 +161,7 @@
     </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app_5.js"></script>
 </body>
 </html>
 
